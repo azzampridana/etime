@@ -21,6 +21,8 @@ model WorkSchedule {
   createdAt           DateTime @default(now()) @db.DateTime(3)
   updatedAt           DateTime @updatedAt @db.DateTime(3)
   users               User[]
+
+  @@map("workschedule")
 }
 
 model User {
@@ -42,6 +44,7 @@ model User {
   @@index([workScheduleId])
   @@index([isActive, role])
   @@index([createdAt, id])
+  @@map("user")
 }
 
 model Attendance {
@@ -75,6 +78,7 @@ model Attendance {
   @@index([userId, checkOutAt])
   // Global admin work-date range and deterministic list ordering.
   @@index([workDate, checkInAt, id])
+  @@map("attendance")
 }
 
 model OvertimeAuthorization {
@@ -91,6 +95,7 @@ model OvertimeAuthorization {
   overtime     Overtime?
 
   @@index([grantedById])
+  @@map("overtimeauthorization")
 }
 
 model Overtime {
@@ -117,6 +122,7 @@ model Overtime {
   updatedAt           DateTime @updatedAt @db.DateTime(3)
 
   @@index([checkOutAt])
+  @@map("overtime")
 }
 
 model DailyReport {
@@ -126,6 +132,8 @@ model DailyReport {
   content      String     @db.Text
   createdAt    DateTime   @default(now()) @db.DateTime(3)
   updatedAt    DateTime   @updatedAt @db.DateTime(3)
+
+  @@map("dailyreport")
 }
 
 model AuditLog {
@@ -142,4 +150,5 @@ model AuditLog {
   @@index([actorId, createdAt])
   @@index([entityType, entityId, createdAt])
   @@index([createdAt])
+  @@map("auditlog")
 }
