@@ -51,9 +51,9 @@ function employeeAggregation(input: EmployeeReportQuery, today: string, employee
     SUM(CASE WHEN a.checkOutAt IS NOT NULL THEN a.requiredWorkMinutes ELSE 0 END) AS requiredMinutes,
     COUNT(o.id) AS overtimeSessions,
     SUM(CASE WHEN o.checkOutAt IS NOT NULL THEN FLOOR(TIMESTAMPDIFF(MICROSECOND, o.checkInAt, o.checkOutAt) / 60000000) ELSE 0 END) AS overtimeMinutes
-    FROM Attendance a JOIN User u ON u.id = a.userId
-    LEFT JOIN OvertimeAuthorization oa ON oa.attendanceId = a.id
-    LEFT JOIN Overtime o ON o.authorizationId = oa.id
+    FROM attendance a JOIN user u ON u.id = a.userId
+    LEFT JOIN overtimeauthorization oa ON oa.attendanceId = a.id
+    LEFT JOIN overtime o ON o.authorizationId = oa.id
     WHERE ${employeeReportWhere(input)}
     ${employeeId ? Prisma.sql`AND u.id = ${employeeId}` : Prisma.empty}
     GROUP BY u.id, u.name, u.email, u.position`;
@@ -96,7 +96,7 @@ export async function findEmployeeReportDetail(input: EmployeeReportQuery, emplo
 export async function findEmployeeReportExport(input: EmployeeReportQuery, today: string) {
   return getPrisma().$transaction(async tx => {
     // Identical SQL predicate for page totals, detail eligibility and all export sheets.
-    const ids = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`SELECT a.id FROM Attendance a JOIN User u ON u.id = a.userId
+    const ids = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`SELECT a.id FROM attendance a JOIN user u ON u.id = a.userId
       WHERE ${employeeReportWhere(input)} ORDER BY u.name ASC, u.id ASC, a.workDate ASC, a.id ASC LIMIT ${MAX_REPORT_EXPORT_ROWS + 1}`);
     const rows = ids.length ? await tx.attendance.findMany({ where: { id: { in: ids.map(row => row.id) } }, select: reportSelect }) : [];
     const byId = new Map(rows.map(row => [row.id, row]));

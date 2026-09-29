@@ -19,7 +19,7 @@ export type AttendanceRecord = Prisma.AttendanceGetPayload<{ select: typeof atte
 
 /** All attendance/report mutations lock the parent first, before any consistent reads. */
 export async function lockAttendanceUser(userId: string, tx: DatabaseTransaction) {
-  await tx.$queryRaw`SELECT id FROM User WHERE id = ${userId} FOR UPDATE`;
+  await tx.$queryRaw`SELECT id FROM user WHERE id = ${userId} FOR UPDATE`;
 }
 
 export function findOpenAttendanceByUser(userId: string, tx?: DatabaseTransaction) {

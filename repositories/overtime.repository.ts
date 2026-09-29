@@ -97,7 +97,7 @@ export async function listOvertimeActivityRecords(input: OvertimeActivityQuery) 
   const order = input.sort && input.order
     ? Prisma.sql`${columns[input.sort]} ${direction}, o.id ${direction}`
     : Prisma.sql`a.workDate DESC, o.checkInAt DESC, o.id DESC`;
-  const joins = Prisma.sql`FROM Overtime o JOIN OvertimeAuthorization oa ON oa.id = o.authorizationId JOIN Attendance a ON a.id = oa.attendanceId JOIN User u ON u.id = a.userId`;
+  const joins = Prisma.sql`FROM overtime o JOIN overtimeauthorization oa ON oa.id = o.authorizationId JOIN attendance a ON a.id = oa.attendanceId JOIN user u ON u.id = a.userId`;
   // SQL is limited to validated expression ordering and bounded IDs; evidence is
   // never loaded for the list. All URL values remain bound parameters.
   return getPrisma().$transaction(async tx => {

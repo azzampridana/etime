@@ -15,7 +15,7 @@ export type AuthorizationAttendanceRecord = Prisma.AttendanceGetPayload<{ select
 
 /** Serialize transitions on the existing parent even before an authorization row exists. */
 export async function lockAuthorizationAttendance(attendanceId: string, tx: DatabaseTransaction) {
-  await tx.$queryRaw`SELECT id FROM Attendance WHERE id = ${attendanceId} FOR UPDATE`;
+  await tx.$queryRaw`SELECT id FROM attendance WHERE id = ${attendanceId} FOR UPDATE`;
 }
 export function findAuthorizationAttendance(attendanceId: string, tx?: DatabaseTransaction) {
   return (tx ?? getPrisma()).attendance.findUnique({ where: { id: attendanceId }, select: workspaceSelect });
@@ -66,7 +66,7 @@ export async function listAuthorizationMonitoringRecords(input: OvertimeAuthoriz
   const columns = { employee: Prisma.sql`u.name`, date: Prisma.sql`a.workDate`, status: state };
   const direction = input.order === "asc" ? Prisma.sql`ASC` : Prisma.sql`DESC`;
   const order = input.sort && input.order ? Prisma.sql`${columns[input.sort]} ${direction}, a.id ${direction}` : Prisma.sql`a.workDate DESC, a.checkInAt DESC, a.id DESC`;
-  const joins = Prisma.sql`FROM Attendance a JOIN User u ON u.id = a.userId LEFT JOIN OvertimeAuthorization oa ON oa.attendanceId = a.id LEFT JOIN Overtime o ON o.authorizationId = oa.id`;
+  const joins = Prisma.sql`FROM attendance a JOIN user u ON u.id = a.userId LEFT JOIN overtimeauthorization oa ON oa.attendanceId = a.id LEFT JOIN overtime o ON o.authorizationId = oa.id`;
   return getPrisma().$transaction(async tx => {
     const [count] = await tx.$queryRaw<{ total: bigint }[]>(Prisma.sql`SELECT COUNT(*) AS total ${joins} WHERE ${where}`);
     const ids = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`SELECT a.id ${joins} WHERE ${where} ORDER BY ${order} LIMIT ${input.pageSize} OFFSET ${(input.page - 1) * input.pageSize}`);
