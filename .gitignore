@@ -32,6 +32,13 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# generated Prisma client
+/generated/prisma/
+
+# Private local evidence (never public/static or committed)
+/storage/
 
 # vercel
 .vercel
