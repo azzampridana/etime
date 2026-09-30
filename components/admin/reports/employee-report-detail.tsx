@@ -30,7 +30,7 @@ export function EmployeeReportDetailView({ item }: { item: EmployeeReportDetail 
     <section className="min-w-0 space-y-2"><h2 className="font-semibold">Overtime</h2>
       {!item.overtime.length ? <p className="text-sm text-muted-foreground">No overtime activity recorded for this period.</p> : <div className="max-w-full overflow-x-auto rounded-xl border" role="region" aria-label="Overtime report" tabIndex={0}><table className={tableClass}>
         <thead><tr>{["Work Date", "Check In", "Check Out", "Duration", "Status"].map(label => <th scope="col" key={label}>{label}</th>)}</tr></thead>
-        <tbody>{item.overtime.map(row => <tr key={row.id}><td className="whitespace-nowrap">{row.workDate}</td><td>{time(row.checkInAt, row.checkInTimezone)}</td><td>{row.checkOutAt ? time(row.checkOutAt, row.checkOutTimezone) : "—"}</td><td className="whitespace-nowrap">{duration(row.durationMinutes)}</td><td className="whitespace-nowrap">{row.state}</td></tr>)}</tbody>
+        <tbody>{item.overtime.map(row => <tr key={row.id}><td className="whitespace-nowrap">{row.workDate}</td><td>{time(row.checkInAt, row.checkInTimezone)}</td><td>{row.checkOutAt ? time(row.checkOutAt, row.checkOutTimezone) : row.state === "Incomplete" ? "Missing Checkout" : "—"}</td><td className="whitespace-nowrap">{duration(row.durationMinutes)}</td><td className="whitespace-nowrap">{row.state}</td></tr>)}</tbody>
       </table></div>}
     </section>
   </div>;

@@ -18,7 +18,7 @@ function defaults<T extends { from?: string; to?: string }>(input: T) {
   return { ...input, from: input.from ?? today, to: input.to ?? today };
 }
 export const overtimeActivityQuerySchema = base.extend({
-  state: z.enum(["all", "open", "completed"]).default("all"),
+  state: z.enum(["all", "open", "completed", "incomplete"]).default("all"),
   sort: z.enum(["employee", "date", "checkIn", "checkOut", "duration", "status"]).optional().catch(undefined),
 }).transform(input => ({ ...defaults(input), sort: input.sort && input.order ? input.sort : undefined,
   order: input.sort && input.order ? input.order : undefined,

@@ -68,7 +68,10 @@ export default async function AdminPage() {
       {data.attention.openOvertime > 0 && <div className="flex flex-wrap items-center justify-between gap-x-4 text-sm">
         <p>{data.attention.openOvertime} Overtime sessions currently in progress, including earlier work dates</p><Link className={navigationClass} href="/admin/overtime/activity">View Overtime →</Link>
       </div>}
-      {!data.attention.historicalIncomplete && !data.attention.openOvertime && <p className="mt-2 text-sm text-muted-foreground">No attendance items currently need attention.</p>}
+      {data.attention.incompleteOvertime > 0 && <div className="flex flex-wrap items-center justify-between gap-x-4 text-sm">
+        <p>{data.attention.incompleteOvertime} Overtime sessions incomplete — Missing Checkout</p><Link className={navigationClass} href="/admin/overtime/activity">View Overtime →</Link>
+      </div>}
+      {!data.attention.historicalIncomplete && !data.attention.openOvertime && !data.attention.incompleteOvertime && <p className="mt-2 text-sm text-muted-foreground">No attendance items currently need attention.</p>}
     </section>
 
     <section aria-labelledby="authorization-heading" className="min-w-0 space-y-3">

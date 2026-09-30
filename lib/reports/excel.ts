@@ -49,9 +49,9 @@ export async function buildReportWorkbook(items: ReportDto[], filters: ReportQue
       eventTime(row.checkOutAt, row.checkOutTimezone), row.checkOutTimezone, location(row.checkOutLatitude, row.checkOutLongitude, row.checkOutAccuracy, row.checkOutAddress), row.checkOutDescription,
       row.actualDurationMinutes, row.requiredWorkMinutes, row.differenceMinutes, row.dailyReport?.content ?? null,
       row.authorizationState, row.authorization?.grantedAt ?? null, row.authorization?.revokedAt ?? null, row.authorization?.note ?? null,
-      overtime ? overtime.isOpen ? "Open" : "Completed" : null,
+      overtime?.state ?? null,
       checkIn ? eventTime(checkIn.at, checkIn.timezone) : null, checkIn?.timezone ?? null, checkIn ? location(checkIn.latitude, checkIn.longitude, checkIn.accuracy, checkIn.address) : null, checkIn?.description ?? null,
-      checkOut ? eventTime(checkOut.at, checkOut.timezone) : null, checkOut?.timezone ?? null, checkOut ? location(checkOut.latitude, checkOut.longitude, checkOut.accuracy, checkOut.address) : null, checkOut?.description ?? null,
+      checkOut ? eventTime(checkOut.at, checkOut.timezone) : overtime?.state === "Incomplete" ? "Missing Checkout" : null, checkOut?.timezone ?? null, checkOut ? location(checkOut.latitude, checkOut.longitude, checkOut.accuracy, checkOut.address) : null, checkOut?.description ?? null,
       overtime?.durationMinutes ?? null]);
     excelRow.alignment = { vertical: "top", wrapText: true };
   }
@@ -107,9 +107,9 @@ export async function buildEmployeeReportWorkbook({ items, summaries, filters }:
     const ot = row.overtime;
     if (!ot) continue;
     const checkIn = ot.checkIn, checkOut = ot.checkOut;
-    overtime.add([ot.id, row.employee.name, row.employee.email, row.employee.position, row.workDate, checkOut ? "Completed" : "In Progress",
+    overtime.add([ot.id, row.employee.name, row.employee.email, row.employee.position, row.workDate, ot.state === "Open" ? "In Progress" : ot.state,
       eventTime(checkIn.at, checkIn.timezone), checkIn.timezone, checkIn.description, checkIn.address, checkIn.latitude, checkIn.longitude, checkIn.accuracy,
-      eventTime(checkOut?.at ?? null, checkOut?.timezone ?? null), checkOut?.timezone ?? null, checkOut?.description ?? null, checkOut?.address ?? null,
+      ot.state === "Incomplete" ? "Missing Checkout" : eventTime(checkOut?.at ?? null, checkOut?.timezone ?? null), checkOut?.timezone ?? null, checkOut?.description ?? null, checkOut?.address ?? null,
       checkOut?.latitude ?? null, checkOut?.longitude ?? null, checkOut?.accuracy ?? null, ot.durationMinutes]);
   }
   return workbook.xlsx.writeBuffer();

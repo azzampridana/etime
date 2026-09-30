@@ -21,7 +21,7 @@ export function OvertimeDetail({ item }: { item: OvertimeMonitoringDetail }) {
           <div><dt className="text-muted-foreground">Description</dt><dd className="whitespace-pre-wrap">{event.description}</dd></div>
         </dl><LocationEvidence latitude={event.latitude} longitude={event.longitude} accuracy={event.accuracy} address={event.address} maps />
           <RetainedEvidencePhoto key={event.photoUrl} url={event.photoUrl} alt={`Watermarked overtime ${label} evidence`} />
-        </> : <p className="text-muted-foreground">Checkout not recorded yet.</p>}
+        </> : <p className="text-muted-foreground">{item.state === "Incomplete" ? "Missing Checkout" : "Checkout not recorded yet."}</p>}
       </CardContent>
     </Card>)}</div>
     <details className="rounded-xl border p-4"><summary className="cursor-pointer font-medium">Authorization context</summary><div className="mt-3 space-y-2 break-words">

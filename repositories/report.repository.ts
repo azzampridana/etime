@@ -78,7 +78,7 @@ export async function listEmployeeReportAggregates(input: EmployeeReportQuery, t
 const employeeDetailSelect = {
   id: true, workDate: true, checkInAt: true, checkInTimezone: true, checkOutAt: true, checkOutTimezone: true, requiredWorkMinutes: true,
   dailyReport: { select: { id: true } },
-  overtimeAuthorization: { select: { overtime: { select: { id: true, checkInAt: true, checkInTimezone: true, checkOutAt: true, checkOutTimezone: true } } } },
+  overtimeAuthorization: { select: { overtime: { select: { id: true, maxOpenMinutes: true, checkInAt: true, checkInTimezone: true, checkOutAt: true, checkOutTimezone: true } } } },
 } satisfies Prisma.AttendanceSelect;
 export async function findEmployeeReportDetail(input: EmployeeReportQuery, employeeId: string, today: string) {
   return getPrisma().$transaction(async tx => {

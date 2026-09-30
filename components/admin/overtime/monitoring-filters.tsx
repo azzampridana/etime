@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import type { OvertimeActivityQuery, OvertimeAuthorizationMonitoringQuery } from "@/schemas/admin-overtime-monitoring.schema";
 
 export function OvertimeMonitoringFilters({ input, authorization = false }: { input: OvertimeActivityQuery | OvertimeAuthorizationMonitoringQuery; authorization?: boolean }) {
-  const states = authorization ? [["all", "All"], ["not-authorized", "Not Authorized"], ["authorized", "Authorized"], ["revoked", "Revoked"], ["used", "Activity Started"]] : [["all", "All"], ["open", "In Progress"], ["completed", "Completed"]];
+  const states = authorization ? [["all", "All"], ["not-authorized", "Not Authorized"], ["authorized", "Authorized"], ["revoked", "Revoked"], ["used", "Activity Started"]] : [["all", "All"], ["open", "In Progress"], ["completed", "Completed"], ["incomplete", "Incomplete"]];
   const path = authorization ? "/admin/overtime?view=authorization" : "/admin/overtime";
   return <form key={JSON.stringify(input)} action="/admin/overtime" className="mb-4 flex flex-wrap items-end gap-3">
     {authorization && <input type="hidden" name="view" value="authorization" />}

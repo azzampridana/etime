@@ -98,10 +98,22 @@ model OvertimeAuthorization {
   @@map("overtimeauthorization")
 }
 
+model OvertimePolicy {
+  // Application writes always address the company singleton (id 1).
+  id             Int      @id @default(1) @db.UnsignedTinyInt
+  maxOpenMinutes Int      @default(720) @db.UnsignedSmallInt
+  updatedAt      DateTime @updatedAt @db.DateTime(3)
+  // Actor and before/after values are recorded in the existing AuditLog.
+
+  @@map("overtimepolicy")
+}
+
 model Overtime {
   id                  String   @id @default(uuid()) @db.Char(36)
   authorizationId     String   @unique @db.Char(36)
   authorization       OvertimeAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Restrict)
+  // Snapshotted at check-in; future policy edits never change this value.
+  maxOpenMinutes      Int      @default(720) @db.UnsignedSmallInt
   checkInAt           DateTime @db.DateTime(3)
   checkInLatitude     Float
   checkInLongitude    Float

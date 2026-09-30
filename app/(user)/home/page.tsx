@@ -29,13 +29,14 @@ export default async function HomePage() {
       />
       {overtime && <HomeSummaryCard
         id="home-overtime" title="Overtime"
-        status={overtime.state === "authorized" ? "Authorized" : overtime.state === "open" ? "Overtime in Progress" : "Completed"}
-        tone={overtime.state === "completed" ? "success" : "active"}
+        status={overtime.state === "authorized" ? "Authorized" : overtime.state === "incomplete" ? "Incomplete" : overtime.state === "open" ? "Overtime in Progress" : "Completed"}
+        tone={overtime.state === "completed" ? "success" : overtime.state === "incomplete" ? "neutral" : "active"}
         description={overtime.state === "authorized" ? "Overtime has been authorized for this attendance." : undefined}
         showEvents={overtime.state !== "authorized"}
         checkIn={overtime.state === "authorized" ? null : overtime.checkIn}
         checkOut={overtime.state === "authorized" ? null : overtime.checkOut}
-        showCheckOut={overtime.state === "completed"}
+        showCheckOut={overtime.state === "completed" || overtime.state === "incomplete"}
+        checkOutPlaceholder={overtime.state === "incomplete" ? "Missing Checkout" : "Not yet"}
         href="/overtime" cta={overtime.state === "open" ? "Continue Overtime" : "View Overtime"}
       />}
     </div>

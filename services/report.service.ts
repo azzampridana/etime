@@ -1,4 +1,5 @@
 import "server-only";
+import { getOvertimeState } from "@/lib/overtime/state";
 import { reportQuerySchema } from "@/schemas/report.schema";
 import { listReportRecords, findReportExportRecords } from "@/repositories/report.repository";
 import { toReportDto } from "@/mappers/report.mapper";
@@ -45,7 +46,8 @@ export async function listEmployeeReport(raw: unknown) {
 }
 export async function getEmployeeReportDetail(raw: unknown): Promise<EmployeeReportDetail> {
   const { employeeId, filters } = employeeReportDetailSchema.parse(raw);
-  const today = getBusinessDate();
+  const now = new Date();
+  const today = getBusinessDate(now);
   const result = await findEmployeeReportDetail(filters, employeeId, today);
   if (!result) throw new ApplicationError("REPORT_NOT_FOUND", "No attendance records found for this employee and period.");
   return { summary: employeeSummary(result.summary), from: filters.from, to: filters.to,
@@ -59,10 +61,11 @@ export async function getEmployeeReportDetail(raw: unknown): Promise<EmployeeRep
     }),
     overtime: result.records.flatMap(row => {
       const ot = row.overtimeAuthorization?.overtime;
+      const state = ot ? getOvertimeState(ot, now) : null;
       return ot ? [{ id: ot.id, workDate: row.workDate.toISOString().slice(0, 10), checkInAt: ot.checkInAt.toISOString(), checkInTimezone: ot.checkInTimezone,
         checkOutAt: ot.checkOutAt?.toISOString() ?? null, checkOutTimezone: ot.checkOutTimezone,
         durationMinutes: ot.checkOutAt ? elapsedWholeMinutes(ot.checkInAt, ot.checkOutAt) : null,
-        state: ot.checkOutAt ? "Completed" as const : "In Progress" as const }] : [];
+        state: state === "Incomplete" ? "Incomplete" as const : state === "Completed" ? "Completed" as const : "In Progress" as const }] : [];
     }),
   };
 }

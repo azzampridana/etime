@@ -23,7 +23,7 @@ export type EmployeeReportAttendance = {
 export type EmployeeReportOvertime = {
   id: string; workDate: string; checkInAt: string; checkInTimezone: string;
   checkOutAt: string | null; checkOutTimezone: string | null; durationMinutes: number | null;
-  state: "In Progress" | "Completed";
+  state: "In Progress" | "Completed" | "Incomplete";
 };
 export type EmployeeReportDetail = {
   summary: EmployeeReportSummary; from: string; to: string;

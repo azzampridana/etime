@@ -69,6 +69,9 @@ export const adminAttendanceMonitoringQuerySchema = z.object({
 }).refine(input => input.from <= input.to, { message: "Date From must not be after Date To.", path: ["from"] });
 export type AdminAttendanceMonitoringQuery = z.output<typeof adminAttendanceMonitoringQuerySchema>;
 
-// Activity monitoring shares the established work-date/state/pagination contract.
-export const adminOvertimeQuerySchema = adminAttendanceQuerySchema;
+// Overtime keeps its own derived-state options; regular Attendance/Reports are unchanged.
+export const adminOvertimeQuerySchema = z.object({
+  ...attendanceQueryFields,
+  state: z.enum(["all", "open", "completed", "incomplete"]).default("all"),
+}).transform(withDateRange).refine(input => input.from <= input.to, { message: "Date From must not be after Date To.", path: ["from"] });
 export type AdminOvertimeQuery = z.output<typeof adminOvertimeQuerySchema>;

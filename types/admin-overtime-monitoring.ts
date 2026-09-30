@@ -1,7 +1,7 @@
 import type { AdminOvertimeDto } from "@/types/overtime";
 import type { OvertimeAuthorizationState } from "@/types/overtime-authorization";
 
-export type OvertimeActivityState = "In Progress" | "Completed";
+export type OvertimeActivityState = "In Progress" | "Completed" | "Incomplete";
 export type OvertimeActivitySummary = {
   id: string; workDate: string; employee: { name: string; position: string | null };
   checkIn: { at: string; timezone: string }; checkOut: { at: string; timezone: string } | null;

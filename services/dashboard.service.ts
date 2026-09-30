@@ -1,4 +1,5 @@
 import "server-only";
+import { getOvertimeState } from "@/lib/overtime/state";
 import { getBusinessDate } from "@/lib/date-time/event-time";
 import { ADMIN_REFERENCE_TIMEZONE } from "@/lib/date-time/constants";
 import type { AttendanceActivityBucket } from "@/types/dashboard";
@@ -7,8 +8,9 @@ import { canGrantOvertimeAuthorization } from "@/services/overtime-authorization
 
 /** Called behind the existing ADMIN page boundary. No new mutation path. */
 export async function getAdminDashboard() {
-  const workDate = getBusinessDate();
-  const records = await readDashboardRecords(new Date(`${workDate}T00:00:00.000Z`));
+  const now = new Date();
+  const workDate = getBusinessDate(now);
+  const records = await readDashboardRecords(new Date(`${workDate}T00:00:00.000Z`), now);
   const activity: AttendanceActivityBucket[] = Array.from({ length: 24 }, (_, hour) => ({
     hour: `${String(hour).padStart(2, "0")}:00`, checkIn: 0, checkOut: 0,
   }));
@@ -31,13 +33,14 @@ export async function getAdminDashboard() {
     workDate,
     activity,
     attendance: { checkedIn: records.working + records.completed, working: records.working, completed: records.completed },
-    overtime: { authorized: records.authorized, inProgress: records.overtimeInProgress, completed: records.overtimeCompleted },
-    attention: { historicalIncomplete: records.historicalIncomplete, openOvertime: records.openOvertime },
+    overtime: { authorized: records.authorized, inProgress: records.overtimeInProgress, completed: records.overtimeCompleted, incomplete: records.overtimeIncomplete },
+    attention: { historicalIncomplete: records.historicalIncomplete, openOvertime: records.openOvertime, incompleteOvertime: records.incompleteOvertime },
     recent: records.recent.map(summarize),
     candidates: records.candidates.map((item) => {
       const authorization = item.overtimeAuthorization;
       // Recorded activity takes precedence over later revocation or deactivation.
-      const access = authorization?.overtime ? (authorization.overtime.checkOutAt ? "Completed" : "In Progress")
+      const overtimeState = authorization?.overtime ? getOvertimeState(authorization.overtime, now) : null;
+      const access = overtimeState ? (overtimeState === "Open" ? "In Progress" : overtimeState)
         : authorization?.revokedAt ? "Revoked"
           : !canGrantOvertimeAuthorization(item.checkOutAt, item.user.isActive) ? "Unavailable"
             : authorization ? "Authorized" : "Grant OT";
