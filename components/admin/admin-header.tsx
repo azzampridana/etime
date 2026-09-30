@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { AdminMobileNavigation } from "@/components/admin/admin-navigation";
+import { Brand } from "@/components/shared/brand";
 
 export function AdminHeader({ user, collapsed, onToggle }: { user: AccountIdentity; collapsed: boolean; onToggle: () => void }) {
   return <header className="sticky top-0 z-30 border-b bg-background pt-[env(safe-area-inset-top)]">
@@ -12,7 +13,7 @@ export function AdminHeader({ user, collapsed, onToggle }: { user: AccountIdenti
           {collapsed ? <PanelLeftOpen aria-hidden="true" className="size-5" /> : <PanelLeftClose aria-hidden="true" className="size-5" />}
         </Button>
         <AdminMobileNavigation />
-        <span role="img" aria-label="ETime" className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-lg font-semibold text-primary-foreground md:hidden">E</span>
+        <div className="md:hidden"><Brand variant="mark" /></div>
       </div>
       <AccountMenu user={user} />
     </div>

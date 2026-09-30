@@ -1,4 +1,7 @@
 import { formatAdminEventTime } from "@/lib/date-time/event-time";
+import path from "node:path";
+import { access } from "node:fs/promises";
+import sharp from "sharp";
 
 export type WatermarkEvidence = {
   event: "check-in" | "check-out"; at: Date; timezone: string;
@@ -38,22 +41,26 @@ function wrapText(text: string, availableWidth: number, font: number): string[] 
   return lines;
 }
 
-export function watermarkSvg(width: number, height: number, evidence: WatermarkEvidence) {
+type WatermarkLineType = "heading" | "datetime" | "address" | "coordinates" | "accuracy" | "attribution";
+
+// Pure layout data: no SVG text flow or renderer-specific line positioning.
+export function calculateWatermarkLayout(width: number, height: number, evidence: WatermarkEvidence) {
   // These are normalized pixel dimensions supplied by processEvidencePhoto, not EXIF dimensions.
   const shortSide = Math.min(width, height);
   const margin = Math.max(4, Math.min(24, shortSide * 0.02));
   const padding = Math.max(6, Math.min(24, shortSide * 0.025));
   const panelWidth = width - margin * 2;
   const textWidth = panelWidth - padding * 2;
-  const font = Math.max(10, Math.min(32, textWidth / 34, height / 22));
-  const titleFont = font * 1.15;
-  const lineHeight = font * 1.5;
-  const titleLineHeight = titleFont * 1.5;
+  const font = Math.max(10, Math.floor(Math.min(32, textWidth / 34, height / 22)));
+  const titleFont = Math.ceil(font * 1.15);
+  const lineHeight = Math.ceil(font * 1.5);
+  const titleLineHeight = Math.ceil(titleFont * 1.5);
   const [, dateTime, coordinates, accuracy] = watermarkLines(evidence);
   const title = wrapText(`ETime · OT ${evidence.event === "check-in" ? "Check-In" : "Check-Out"}`, textWidth, titleFont);
   const metadata = [dateTime, coordinates, accuracy].flatMap(line => wrapText(line, textWidth, font));
   const attribution = evidence.address ? wrapText("Geoapify (geoapify.com)", textWidth, font) : [];
-  const fixedHeight = padding * 2 + title.length * titleLineHeight + (metadata.length + attribution.length) * lineHeight;
+  // Baseline spacing preserves the larger heading ascent through the final metadata line.
+  const fixedHeight = padding * 2 + titleFont - font + title.length * titleLineHeight + (metadata.length + attribution.length) * lineHeight;
   const addressCapacity = Math.max(0, Math.min(3, Math.floor((height - margin * 2 - fixedHeight) / lineHeight)));
   const addressLines = evidence.address ? wrapText(evidence.address, textWidth, font) : [];
   const address = addressLines.slice(0, addressCapacity);
@@ -62,16 +69,58 @@ export function watermarkSvg(width: number, height: number, evidence: WatermarkE
     const last = address.length - 1;
     address[last] = `${Array.from(address[last]).slice(0, -2).join("")}…`;
   }
-  const panelHeight = Math.ceil(fixedHeight + address.length * lineHeight);
-  const top = height - margin - panelHeight;
-  let y = top + padding;
-  const text = [
-    ...title.map(value => ({ value, size: titleFont, height: titleLineHeight, weight: 700 })),
-    ...[...metadata, ...address, ...attribution].map(value => ({ value, size: font, height: lineHeight, weight: 400 })),
-  ].map(line => {
-    const baseline = y + line.size;
-    y += line.height;
-    return `<text x="${margin + padding}" y="${baseline}" fill="white" font-family="DejaVu Sans, sans-serif" font-size="${line.size}" font-weight="${line.weight}">${xml(line.value)}</text>`;
-  }).join("");
-  return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect x="${margin}" y="${top}" width="${panelWidth}" height="${panelHeight}" rx="${padding / 2}" fill="#000" fill-opacity="0.76"/>${text}</svg>`);
+  const lines: { text: string; x: number; y: number; type: WatermarkLineType; fontSize: number; lineHeight: number }[] = [];
+  function append(values: string[], type: WatermarkLineType) {
+    const fontSize = type === "heading" ? titleFont : font;
+    const spacing = type === "heading" ? titleLineHeight : lineHeight;
+    for (const text of values) {
+      const previous = lines.at(-1);
+      // Baselines advance by the preceding line's full spacing, including at type boundaries.
+      const y = previous ? previous.y + previous.lineHeight : padding + fontSize;
+      lines.push({ text, x: margin + padding, y, type, fontSize, lineHeight: spacing });
+    }
+  }
+  append(title, "heading");
+  append(wrapText(dateTime, textWidth, font), "datetime");
+  append(address, "address");
+  append(wrapText(coordinates, textWidth, font), "coordinates");
+  append(wrapText(accuracy, textWidth, font), "accuracy");
+  append(attribution, "attribution");
+
+  const last = lines[lines.length - 1];
+  // Reserve descent/leading below the final baseline, then bottom padding.
+  const panelHeight = Math.ceil(last.y + last.lineHeight - last.fontSize + padding);
+  const panelY = height - margin - panelHeight;
+  return {
+    imageWidth: width, imageHeight: height,
+    panelX: margin, panelY, panelWidth, panelHeight,
+    headingFontSize: titleFont, metadataFontSize: font,
+    headingLineHeight: titleLineHeight, metadataLineHeight: lineHeight,
+    lines: lines.map(line => ({ ...line, y: panelY + line.y })),
+  };
+}
+
+export async function watermarkImage(width: number, height: number, evidence: WatermarkEvidence) {
+  const layout = calculateWatermarkLayout(width, height, evidence);
+  const regular = path.join(process.cwd(), "assets/fonts/NotoSans-Regular.ttf");
+  const bold = path.join(process.cwd(), "assets/fonts/NotoSans-Bold.ttf");
+  // A missing deployment asset must fail explicitly, never silently use an OS font.
+  await Promise.all([access(regular), access(bold)]);
+  const panel = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${layout.imageWidth}" height="${layout.imageHeight}" viewBox="0 0 ${layout.imageWidth} ${layout.imageHeight}"><rect x="${layout.panelX}" y="${layout.panelY}" width="${layout.panelWidth}" height="${layout.panelHeight}" fill="#000" fill-opacity="0.76"/></svg>`);
+  const overlays: sharp.OverlayOptions[] = [];
+  for (const line of layout.lines) {
+    const heading = line.type === "heading";
+    const input = await sharp({ text: {
+      text: `<span foreground="white">${xml(line.text)}</span>`,
+      font: `Noto Sans ${heading ? "Bold" : "Regular"} ${line.fontSize}`,
+      fontfile: heading ? bold : regular,
+      dpi: 72,
+      rgba: true,
+      // Each line is already wrapped and positioned by calculateWatermarkLayout.
+      // No width/height fitting or Pango automatic wrapping is requested.
+      wrap: "none",
+    } }).png().toBuffer();
+    overlays.push({ input, left: Math.round(line.x), top: Math.round(line.y - line.fontSize) });
+  }
+  return sharp(panel).composite(overlays).png().toBuffer();
 }

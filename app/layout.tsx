@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "ETime | Enneaphos Group",
-  description: "Workforce Attendance & Activity for Enneaphos Group.",
+  description: "Attendance and overtime management for Enneaphos Group.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
