@@ -1,7 +1,7 @@
 import { formatAdminEventTime } from "@/lib/date-time/event-time";
 import path from "node:path";
 import { access } from "node:fs/promises";
-import sharp from "sharp";
+import sharp, { type OverlayOptions } from "sharp";
 
 export type WatermarkEvidence = {
   event: "check-in" | "check-out"; at: Date; timezone: string;
@@ -107,7 +107,7 @@ export async function watermarkImage(width: number, height: number, evidence: Wa
   // A missing deployment asset must fail explicitly, never silently use an OS font.
   await Promise.all([access(regular), access(bold)]);
   const panel = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${layout.imageWidth}" height="${layout.imageHeight}" viewBox="0 0 ${layout.imageWidth} ${layout.imageHeight}"><rect x="${layout.panelX}" y="${layout.panelY}" width="${layout.panelWidth}" height="${layout.panelHeight}" fill="#000" fill-opacity="0.76"/></svg>`);
-  const overlays: sharp.OverlayOptions[] = [];
+  const overlays: OverlayOptions[] = [];
   for (const line of layout.lines) {
     const heading = line.type === "heading";
     const input = await sharp({ text: {
