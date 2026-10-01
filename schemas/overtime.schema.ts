@@ -3,6 +3,7 @@ import { attendanceEvidenceSchema } from "@/schemas/attendance.schema";
 
 export const MAX_PHOTO_INPUT_BYTES = 10 * 1024 * 1024;
 export const OVERTIME_LOCATION_MAX_AGE_MS = 5 * 60 * 1000;
+export const OVERTIME_LOCATION_MAX_FUTURE_SKEW_MS = 30_000;
 export const overtimeLocationSchema = attendanceEvidenceSchema.omit({ description: true }).extend({
   acquiredAt: z.number().int().positive(),
   event: z.enum(["check-in", "check-out"]),

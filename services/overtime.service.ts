@@ -10,7 +10,7 @@ import { findUserById } from "@/repositories/user.repository";
 import { lockActiveAttendanceUser } from "@/services/attendance-context";
 import { lockAuthorizationAttendance } from "@/repositories/overtime-authorization.repository";
 import { findLatestOvertimeAttendance, findOpenOvertime, findOvertimeById, createOvertime, closeOvertime } from "@/repositories/overtime.repository";
-import { overtimeEvidenceSchema, overtimePhotoSchema, overtimeLocationSchema, OVERTIME_LOCATION_MAX_AGE_MS } from "@/schemas/overtime.schema";
+import { overtimeEvidenceSchema, overtimePhotoSchema, overtimeLocationSchema, OVERTIME_LOCATION_MAX_AGE_MS, OVERTIME_LOCATION_MAX_FUTURE_SKEW_MS } from "@/schemas/overtime.schema";
 import { signOvertimeLocation, readOvertimeLocation } from "@/lib/geolocation/overtime-location-receipt";
 import { processEvidencePhoto } from "@/lib/photos/process-photo";
 import { getStorage } from "@/lib/storage/local-storage";
@@ -52,11 +52,12 @@ function requireFreshLocation(expiresAt: number, now: number) {
 export async function prepareOvertimeLocation(userId: string, raw: unknown, dependencies: Pick<Dependencies, "geocoder" | "clock"> = {}) {
   const input = overtimeLocationSchema.parse(raw);
   const clock = () => (dependencies.clock ?? (() => new Date()))().getTime();
-  const now = clock();
-  // Client time is freshness metadata only; reject future/stale acquisition claims.
-  if (input.acquiredAt > now) throw new ApplicationError("LOCATION_CLOCK", "Your device clock is ahead of the server. Correct it and get your location again.");
-  const expiresAt = input.acquiredAt + OVERTIME_LOCATION_MAX_AGE_MS;
-  requireFreshLocation(expiresAt, now);
+  const serverValidationAt = clock();
+  // Allow bounded client clock skew without extending the five-minute validity window.
+  if (input.acquiredAt - serverValidationAt > OVERTIME_LOCATION_MAX_FUTURE_SKEW_MS) throw new ApplicationError("LOCATION_CLOCK", "Your device clock is ahead of the server. Correct it and get your location again.");
+  const effectiveAcquiredAt = Math.min(input.acquiredAt, serverValidationAt);
+  const expiresAt = effectiveAcquiredAt + OVERTIME_LOCATION_MAX_AGE_MS;
+  requireFreshLocation(expiresAt, serverValidationAt);
   await requireActive(userId);
   const targetId = input.event === "check-in" ? (await resolveStart(userId, undefined, new Date(clock()))).authorization.id : (await resolveClose(userId, undefined, new Date(clock()))).id;
   const address = await resolveEventAddress(input, dependencies.geocoder);
