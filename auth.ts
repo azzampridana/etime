@@ -1,8 +1,13 @@
 import "server-only";
 
-import NextAuth, { AuthError } from "next-auth";
+import NextAuth, { AuthError, CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authenticateCredentials } from "@/services/auth.service";
+import { ApplicationError } from "@/lib/errors/application-error";
+
+class InactiveAccountSignin extends CredentialsSignin {
+  code = "INACTIVE_ACCOUNT";
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
@@ -15,7 +20,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       email: { label: "Email", type: "email" },
       password: { label: "Password", type: "password" },
     },
-    authorize: (credentials) => authenticateCredentials(credentials),
+    async authorize(credentials) {
+      try { return await authenticateCredentials(credentials); }
+      catch (error) {
+        if (error instanceof ApplicationError && error.code === "INACTIVE_ACCOUNT") throw new InactiveAccountSignin();
+        throw error;
+      }
+    },
   })],
   callbacks: {
     jwt({ token, user }) {

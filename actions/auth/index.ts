@@ -1,34 +1,29 @@
 "use server";
 
-import { AuthError } from "next-auth";
+import { CredentialsSignin } from "next-auth";
+import { z } from "zod";
 import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/auth";
 import { loginSchema } from "@/schemas/auth.schema";
 import type { ActionResult } from "@/types/action-result";
+import type { LoginResult } from "@/types/login";
 
-export async function loginAction(_previous: ActionResult, formData: FormData): Promise<ActionResult> {
+export async function loginAction(_previous: ActionResult, formData: FormData): Promise<LoginResult> {
   const input = loginSchema.safeParse({ email: formData.get("email"), password: formData.get("password") });
-  if (!input.success) return { success: false, message: "Invalid email or password." };
+  if (!input.success) return { success: false, message: "Periksa email dan password Anda.", failure: "VALIDATION_ERROR", fieldErrors: z.flattenError(input.error).fieldErrors };
   try {
     await signIn("credentials", { ...input.data, redirect: false, redirectTo: "/" });
   } catch (error) {
-    console.error("[AUTH_LOGIN_ERROR]", error);
-
-    if (error instanceof AuthError) {
-      console.error("[AUTH_LOGIN_TYPE]", error.type);
-      console.error("[AUTH_LOGIN_CAUSE]", error.cause);
-    }
-
     return {
       success: false,
-      message:
-        error instanceof AuthError && error.type === "CredentialsSignin"
-          ? "Invalid email or password."
-          : "Unable to sign in. Please try again.",
+      message: "",
+      failure: error instanceof CredentialsSignin
+        ? error.code === "INACTIVE_ACCOUNT" ? "INACTIVE_ACCOUNT" : "INVALID_CREDENTIALS"
+        : "SYSTEM_ERROR",
     };
   }
-  // Resolve the current DB role on a new request, after the cookie has been set.
-  redirect("/");
+  // The client navigates only after success; / resolves the current database role.
+  return { success: true, message: "" };
 }
 
 export async function logoutAction(): Promise<void> {

@@ -5,6 +5,7 @@ import { findUserCredentialsByEmail, findUserIdentityById } from "@/repositories
 import { loginSchema } from "@/schemas/auth.schema";
 import { userIdSchema } from "@/schemas/user.schema";
 import type { AuthenticatedUser } from "@/types/auth";
+import { ApplicationError } from "@/lib/errors/application-error";
 
 type IdentityRecord = NonNullable<Awaited<ReturnType<typeof findUserIdentityById>>>;
 type CredentialsRecord = NonNullable<Awaited<ReturnType<typeof findUserCredentialsByEmail>>>;
@@ -25,7 +26,8 @@ export async function authenticateCredentials(
   if (!parsed.success) return null;
   const user = await lookup(parsed.data.email);
   const validPassword = await verifyPassword(parsed.data.password, user?.passwordHash ?? UNKNOWN_USER_HASH);
-  if (!user || !validPassword || !user.isActive) return null;
+  if (!user || !validPassword) return null;
+  if (!user.isActive) throw new ApplicationError("INACTIVE_ACCOUNT", "Account inactive.");
   return toIdentity(user);
 }
 
