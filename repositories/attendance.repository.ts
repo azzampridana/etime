@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/db/prisma";
 import type { DatabaseTransaction } from "@/lib/db/transaction";
 import { dailyReportSelect } from "@/repositories/daily-report.repository";
@@ -89,14 +89,26 @@ const monitoringSelect = {
 // The service supplies ordered, disjoint state predicates. Count groups before
 // applying offset/limit so derived-state sorting covers the entire result set.
 export async function listAdminAttendanceRecords(input: AdminAttendanceMonitoringQuery, groups: Prisma.AttendanceWhereInput[]) {
-  const base = adminAttendanceWhere({ ...input, state: "all" });
+  // Monitoring resolves plain-text search separately; shared Reports filters stay unchanged.
+  const base = adminAttendanceWhere({ ...input, state: "all", search: undefined });
+  const search = input.search?.trim();
   const order: Prisma.AttendanceOrderByWithRelationInput[] = !input.sort || !input.order || input.sort === "status"
     ? adminAttendanceOrder
     : [input.sort === "employee" ? { user: { name: input.order } }
       : input.sort === "date" ? { workDate: input.order }
       : input.sort === "checkIn" ? { checkInAt: input.order } : { checkOutAt: input.order }, { id: input.order }];
   return getPrisma().$transaction(async tx => {
-    const predicates = groups.map(group => ({ AND: [base, group] }));
+    const searchRestriction: Prisma.AttendanceWhereInput[] = [];
+    if (search) {
+      // Same parameterized LOCATE pattern as Overtime; select only matching owner IDs.
+      const users = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
+        SELECT u.id FROM user u
+        WHERE (LOCATE(${search}, u.name) > 0 OR LOCATE(${search}, u.email) > 0)
+        ${input.userId ? Prisma.sql`AND u.id = ${input.userId}` : Prisma.empty}`);
+      if (!users.length) return { items: [], total: 0 };
+      searchRestriction.push({ userId: { in: users.map(user => user.id) } });
+    }
+    const predicates = groups.map(group => ({ AND: [base, group, ...searchRestriction] }));
     const counts = await Promise.all(predicates.map(where => tx.attendance.count({ where })));
     let skip = (input.page - 1) * input.pageSize;
     const items: Prisma.AttendanceGetPayload<{ select: typeof monitoringSelect }>[] = [];
