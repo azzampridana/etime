@@ -27,7 +27,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ v
         {history.items.map(item => <li key={item.id}>
           <Card className="min-w-0 rounded-2xl"><CardContent className="space-y-3">
             <div className="flex items-start justify-between gap-2">
-              <h3 className="min-w-0 flex-1 text-sm font-semibold">{formatBusinessDate(item.workDate)} <span className="text-xs font-normal text-muted-foreground">WIB</span></h3>
+              <h3 className="min-w-0 flex-1 text-sm font-semibold">{formatBusinessDate(item.workDate)}</h3>
               <span className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ring-current/10 ${item.state === "Completed" ? "bg-emerald-50 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200" : item.state === "Working" ? "bg-blue-50 text-blue-900 dark:bg-blue-950 dark:text-blue-200" : "bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200"}`}>{item.state}</span>
             </div>
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
