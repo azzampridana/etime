@@ -3,8 +3,9 @@ import type { OvertimeAuthorizationState } from "@/types/overtime-authorization"
 
 export type OvertimeActivityState = "In Progress" | "Completed" | "Incomplete";
 export type OvertimeActivitySummary = {
+  checkOutSource: "NORMAL" | "ADMIN_CORRECTION" | null;
   id: string; workDate: string; employee: { name: string; position: string | null };
-  checkIn: { at: string; timezone: string }; checkOut: { at: string; timezone: string } | null;
+  checkIn: { at: string; timezone: string }; checkOut: { at: string; timezone: string | null } | null;
   durationMinutes: number | null; state: OvertimeActivityState;
 };
 export type OvertimeMonitoringDetail = Omit<AdminOvertimeDto, "state" | "employee"> & {
@@ -16,5 +17,5 @@ export type AuthorizationMonitoringSummary = {
   authorizationState: OvertimeAuthorizationState;
   state: OvertimeAuthorizationState | "Activity Started";
   authorization: { note: string | null } | null;
-  canGrant: boolean; revoked: boolean;
+  canGrant: boolean; revoked: boolean; correctionAffected?: boolean;
 };

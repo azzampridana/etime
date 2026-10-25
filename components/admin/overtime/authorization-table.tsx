@@ -14,7 +14,7 @@ export function AuthorizationTable({ items, query }: { items: AuthorizationMonit
       <td className="max-w-56 break-words"><p className="font-medium">{item.employee.name}</p>{item.employee.position && <p className="text-xs text-muted-foreground">{item.employee.position}</p>}</td>
       <td className="whitespace-nowrap">{item.workDate}</td><td className="hidden md:table-cell"><Link href={`/admin/attendance/${item.id}`} className="inline-flex min-h-10 items-center text-xs underline">Completed</Link></td>
       <td><OvertimeMonitoringStatus state={item.state} />{item.state === "Activity Started" && item.revoked && <p className="mt-1 text-xs text-muted-foreground">Authorization revoked</p>}</td>
-      <td><AuthorizationControls item={item} compact canGrant={item.canGrant} /></td>
+      <td><AuthorizationControls item={item} compact canGrant={item.canGrant} />{item.correctionAffected && <p className="mt-1 max-w-52 whitespace-normal text-xs text-muted-foreground">ADMIN-corrected Attendance cannot receive new OT authorization.</p>}</td>
     </tr>)}{!items.length && <tr><td colSpan={6} className="text-muted-foreground">No matching authorization records or eligible completed attendance.</td></tr>}</tbody>
   </table></div>;
 }

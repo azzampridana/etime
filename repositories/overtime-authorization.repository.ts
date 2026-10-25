@@ -50,6 +50,7 @@ export async function listAuthorizationAttendanceRecords(input: AdminOvertimeAut
 }
 
 const authorizationListSelect = {
+  checkInSource: true, checkOutSource: true, checkInCorrectionRequestId: true, checkOutCorrectionRequestId: true,
   id: true, workDate: true, checkOutAt: true,
   user: { select: { name: true, position: true, isActive: true } },
   overtimeAuthorization: { select: { revokedAt: true, note: true, overtime: { select: { id: true } } } },

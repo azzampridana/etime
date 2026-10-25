@@ -7,6 +7,7 @@ import { dailyReportSelect } from "@/repositories/daily-report.repository";
 import type { AdminAttendanceQuery, AdminAttendanceMonitoringQuery } from "@/schemas/admin-query.schema";
 
 const attendanceSelect = {
+  checkInSource: true, checkOutSource: true, checkInCorrectionRequestId: true, checkOutCorrectionRequestId: true,
   id: true, workDate: true, requiredWorkMinutes: true, checkInAt: true,
   checkInLatitude: true, checkInLongitude: true, checkInAccuracy: true,
   checkInAddress: true, checkInTimezone: true, checkInDescription: true, checkOutAt: true,
@@ -61,7 +62,7 @@ type CheckoutData = Required<Pick<Prisma.AttendanceUncheckedUpdateInput,
 
 export function closeAttendanceRecord(id: string, data: CheckoutData, tx: DatabaseTransaction) {
   // Guard the transition as well as holding the parent lock; never overwrite closed evidence.
-  return tx.attendance.update({ where: { id, checkOutAt: null }, data, select: attendanceSelect });
+  return tx.attendance.update({ where: { id, checkOutAt: null }, data: { ...data, checkOutSource: "NORMAL" }, select: attendanceSelect });
 }
 
 export const adminAttendanceSelect = {
@@ -81,6 +82,7 @@ export function adminAttendanceWhere(input: AdminAttendanceQuery): Prisma.Attend
 }
 
 const monitoringSelect = {
+  checkInSource: true, checkOutSource: true,
   id: true, workDate: true, checkInAt: true, checkInTimezone: true,
   checkOutAt: true, checkOutTimezone: true,
   user: { select: { name: true, position: true } },

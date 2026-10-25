@@ -101,11 +101,11 @@ export function DirectCamera({ disabled, isFresh, onCapture, startOnMount = fals
     }
   }
 
-  return <div className="space-y-3">
+  return <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
     {/* Mirror only the preview; drawImage captures the original, untransformed video frame. */}
     <video ref={video} autoPlay muted playsInline aria-label="Live camera preview" style={{ transform: facing === "user" ? "scaleX(-1)" : undefined }} className={`max-h-80 w-full rounded-lg bg-black object-contain ${state === "ready" || state === "requesting" || state === "capturing" ? "" : "hidden"}`} />
     <p role="status" className="text-sm">{state === "requesting" ? "Requesting camera access…" : message || (state === "ready" ? "Camera ready." : "Open the camera to take your evidence photo.")}</p>
-    {state === "ready" ? <Button type="button" className="min-h-12 w-full" disabled={disabled} onClick={capture}>Capture Photo</Button>
+    {state === "ready" ? <Button type="button" className="min-h-12 w-full rounded-xl bg-indigo-700 text-white hover:bg-indigo-800 motion-reduce:transition-none" disabled={disabled} onClick={capture}>Capture Photo</Button>
       : <Button type="button" variant="outline" className="min-h-12 w-full" disabled={disabled || state === "requesting" || state === "capturing"} onClick={() => void start()}>{state === "capturing" ? "Capturing…" : state === "error" ? "Retry Camera" : "Open Camera"}</Button>}
     {state === "ready" && <Button type="button" variant="outline" className="min-h-11 w-full" disabled={disabled} onClick={() => void start(facing === "environment" ? "user" : "environment")}>Switch Camera</Button>}
     {(state === "requesting" || state === "ready") && <Button type="button" variant="outline" className="min-h-11 w-full" onClick={() => { generation.current++; stop(); setState("idle"); }}>Close Camera</Button>}

@@ -49,7 +49,9 @@ export function setUserActiveStatusRecord(id: string, isActive: boolean, tx: Dat
 export async function findUserDeletionDependencies(id: string, tx: DatabaseTransaction) {
   const attendance = await tx.attendance.findFirst({ where: { userId: id }, select: { id: true } });
   const grant = await tx.overtimeAuthorization.findFirst({ where: { grantedById: id }, select: { id: true } });
-  return { attendance, grant };
+  const correction = await tx.attendanceCorrectionRequest.findFirst({ where: { OR: [{ userId: id }, { reviewedById: id }] }, select: { id: true } });
+  const overtimeCorrection = await tx.overtimeCorrectionRequest.findFirst({ where: { OR: [{ userId: id }, { reviewedById: id }] }, select: { id: true } });
+  return { attendance, grant, correction, overtimeCorrection };
 }
 
 export function deleteUserRecord(id: string, tx: DatabaseTransaction) {

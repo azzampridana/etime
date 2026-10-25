@@ -1,13 +1,21 @@
 import type { DailyReportDto } from "@/types/daily-report";
 
-export type AttendanceDto = {
+export type AttendanceEventSource = "NORMAL" | "ADMIN_CORRECTION";
+export type AttendanceProvenance = {
+  checkInSource: AttendanceEventSource;
+  checkOutSource: AttendanceEventSource | null;
+  checkInCorrectionRequestId: string | null;
+  checkOutCorrectionRequestId: string | null;
+};
+
+export type AttendanceDto = AttendanceProvenance & {
   id: string;
   workDate: string;
   requiredWorkMinutes: number;
   checkInAt: string;
-  checkInLatitude: number;
-  checkInLongitude: number;
-  checkInAccuracy: number;
+  checkInLatitude: number | null;
+  checkInLongitude: number | null;
+  checkInAccuracy: number | null;
   checkInAddress: string | null;
   checkInTimezone: string;
   checkInDescription: string | null;

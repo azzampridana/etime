@@ -2,6 +2,7 @@
 import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { AttendanceDetailDialog } from "@/components/admin/attendance/attendance-detail-dialog";
 import { AttendanceStatus } from "@/components/admin/attendance/attendance-status";
+import { AttendanceProvenanceNote } from "@/components/attendance/attendance-provenance";
 import { formatAdminEventTime } from "@/lib/date-time/event-time";
 import type { AdminAttendanceSummaryDto } from "@/types/admin-attendance";
 import type { AdminAttendanceMonitoringQuery } from "@/schemas/admin-query.schema";
@@ -29,7 +30,7 @@ export function AttendanceTable({ items, query }: { items: AdminAttendanceSummar
         <td className="whitespace-nowrap tabular-nums">{item.workDate}</td>
         <td className="hidden whitespace-nowrap md:table-cell">{formatAdminEventTime(item.checkInAt, item.checkInTimezone, true)}</td>
         <td className="hidden whitespace-nowrap md:table-cell">{item.checkOutAt && item.checkOutTimezone ? formatAdminEventTime(item.checkOutAt, item.checkOutTimezone, true) : "—"}</td>
-        <td><AttendanceStatus state={item.state} /></td>
+        <td><AttendanceStatus state={item.state} /><AttendanceProvenanceNote {...item} /></td>
         <td><AttendanceDetailDialog id={item.id} name={item.employee.name} /></td>
       </tr>)}{!items.length && <tr><td colSpan={7} className="text-muted-foreground">No attendance records match these filters.</td></tr>}</tbody>
     </table>

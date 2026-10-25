@@ -76,6 +76,7 @@ export async function listEmployeeReportAggregates(input: EmployeeReportQuery, t
 }
 
 const employeeDetailSelect = {
+  checkInSource: true, checkOutSource: true, checkInCorrectionRequestId: true, checkOutCorrectionRequestId: true,
   id: true, workDate: true, checkInAt: true, checkInTimezone: true, checkOutAt: true, checkOutTimezone: true, requiredWorkMinutes: true,
   dailyReport: { select: { id: true } },
   overtimeAuthorization: { select: { overtime: { select: { id: true, maxOpenMinutes: true, checkInAt: true, checkInTimezone: true, checkOutAt: true, checkOutTimezone: true } } } },

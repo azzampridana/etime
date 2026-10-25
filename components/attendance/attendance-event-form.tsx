@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { acquireLocation as getLocation, type LocationEvidence } from "@/lib/geolocation/acquire-location";
 import { ATTENDANCE_LOCATION_MAX_AGE_MS } from "@/schemas/attendance.schema";
 import type { AttendanceDto } from "@/types/attendance";
+import { MapPin } from "lucide-react";
 
 type ReadyLocation = { status: "ready"; evidence: LocationEvidence; receipt: string; address: string | null; expiresAt: number; deadline: number };
 type AttendanceLocationState = { status: "idle" | "loading" | "expired" } | { status: "error"; message: string } | ReadyLocation;
@@ -128,24 +129,24 @@ export function AttendanceEventForm({ mode, attendanceId, disabled = false, onPe
     }
   }
 
-  if (attendance) return <div className="space-y-4"><p role="status">{message}</p><AttendanceSummary attendance={attendance} /></div>;
-  return <Card>
-    <CardHeader><h2 className="text-lg font-semibold">{checkingOut ? "Check Out" : "Regular attendance"}</h2><p className="text-muted-foreground">{checkingOut ? "Save your Daily Report, then acquire a fresh location to check out." : "Acquire your location when you are ready to check in."}</p></CardHeader>
+  if (attendance) return <div className="space-y-4"><p role="status">{message}</p><AttendanceSummary attendance={attendance} compact /></div>;
+  return <Card className="min-w-0 rounded-2xl">
+    <CardHeader><h2 className="text-base font-semibold">{checkingOut ? "Check Out" : "Regular attendance"}</h2><p className="text-muted-foreground">{checkingOut ? "Save your Daily Report, then acquire a fresh location to check out." : "Acquire your location when you are ready to check in."}</p></CardHeader>
     <CardContent>
-      <form onSubmit={submit} className="space-y-6" aria-busy={pending}>
+      <form onSubmit={submit} className="space-y-4" aria-busy={pending}>
         <section aria-labelledby={`${mode}-location-heading`} className="space-y-3">
-          <h3 id={`${mode}-location-heading`} className="font-medium">{checkingOut ? "Checkout location" : "Location"}</h3>
-          <div aria-live="polite" className="break-words text-sm leading-6">
+          <h3 id={`${mode}-location-heading`} className="flex items-center gap-2 font-semibold"><MapPin aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />{checkingOut ? "Checkout location" : "Location"}</h3>
+          <div aria-live="polite" className={`space-y-2 rounded-xl border p-4 text-sm leading-6 [overflow-wrap:anywhere] ${location.status === "expired" ? "border-amber-200 bg-amber-50 text-amber-900" : location.status === "error" ? "border-red-200 bg-red-50 text-red-900" : location.status === "ready" ? "border-blue-100 bg-blue-50/60" : "border-slate-200 bg-slate-50"}`}>
             {location.status === "idle" && <p>Location is required for this {checkingOut ? "checkout" : "check-in"}.</p>}
             {location.status === "loading" && <p>Detecting your location…</p>}
             {location.status === "error" && <p role="alert">{location.message}</p>}
             {location.status === "expired" && <p role="status">Location expired. Get your location again.</p>}
             {location.status === "ready" && <><p className="font-medium text-teal-800">Location detected</p>
-              <p>Location valid for {Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, "0")}</p>
+              <p className="text-xs font-medium tabular-nums text-blue-900">Location valid for {Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, "0")}</p>
               <p>{location.address ?? "Address unavailable. GPS coordinates remain valid."}</p>
               {location.address && <GeocodingAttribution />}
-              <dl><dt>Latitude</dt><dd>{location.evidence.latitude}</dd><dt>Longitude</dt><dd>{location.evidence.longitude}</dd>
-                <dt>Accuracy</dt><dd>±{location.evidence.accuracy} m</dd><dt>Timezone</dt><dd>{location.evidence.timezone}</dd></dl></>}
+              <details><summary className="min-h-11 cursor-pointer py-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-blue-700">GPS evidence &amp; timezone</summary><dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs"><dt>Latitude</dt><dd>{location.evidence.latitude}</dd><dt>Longitude</dt><dd>{location.evidence.longitude}</dd>
+                <dt>Accuracy</dt><dd>±{location.evidence.accuracy} m</dd><dt>Timezone</dt><dd>{location.evidence.timezone}</dd></dl></details></>}
           </div>
           <Button type="button" variant="outline" className="min-h-12 w-full" onClick={acquireLocation} disabled={disabled || pending || location.status === "loading"}>
             {location.status === "error" ? "Try Again" : location.status === "ready" ? "Refresh location" : "Get location"}
@@ -153,11 +154,11 @@ export function AttendanceEventForm({ mode, attendanceId, disabled = false, onPe
         </section>
         <div className="space-y-2">
           <Label htmlFor={`${mode}-description`}>{checkingOut ? "Checkout description (optional)" : "Description (optional)"}</Label>
-          <textarea id={`${mode}-description`} value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} rows={4} disabled={disabled || pending}
-            className="w-full resize-y rounded-lg border border-input bg-background p-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+          <textarea id={`${mode}-description`} value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} rows={3} disabled={disabled || pending}
+            className="w-full min-w-0 resize-y rounded-lg border border-input bg-background p-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
         </div>
-        {message && <p role="alert" className="break-words text-sm">{message}</p>}
-        <Button type="submit" className="min-h-12 w-full" disabled={disabled || pending || location.status !== "ready"}>{pending ? checkingOut ? "Checking out…" : "Checking in…" : label}</Button>
+        {message && <p role="alert" className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm [overflow-wrap:anywhere]">{message}</p>}
+        <Button type="submit" className="min-h-12 w-full rounded-xl bg-blue-700 text-white hover:bg-blue-800 motion-safe:active:scale-[0.99] motion-reduce:transition-none" disabled={disabled || pending || location.status !== "ready"}>{pending ? checkingOut ? "Checking out…" : "Checking in…" : label}</Button>
       </form>
     </CardContent>
   </Card>;

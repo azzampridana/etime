@@ -20,6 +20,15 @@ export function getPrisma(): PrismaClient {
 
   // Preserve URL options (including TLS), and use UTC for database date handling.
   connection.searchParams.set("timezone", "Z");
+  // Permit RSA key retrieval only for the known local development database.
+  if (
+    process.env.NODE_ENV === "development" &&
+    (connection.hostname === "localhost" || connection.hostname === "127.0.0.1") &&
+    (connection.port || "3306") === "3306" &&
+    connection.pathname === "/etime"
+  ) {
+    connection.searchParams.set("allowPublicKeyRetrieval", "true");
+  }
   const adapter = new PrismaMariaDb(connection.toString());
   const prisma = new PrismaClient({ adapter, log: [] });
   databaseGlobal.etimePrisma = prisma;

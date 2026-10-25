@@ -16,7 +16,7 @@ export type AdminAttendanceDetailDto = AdminAttendanceDto & {
   state: AdminAttendanceState;
 };
 export type AdminAttendanceSummaryDto = Pick<AttendanceDto,
-  "id" | "workDate" | "checkInAt" | "checkInTimezone" | "checkOutAt" | "checkOutTimezone"> & {
+  "id" | "workDate" | "checkInAt" | "checkInTimezone" | "checkOutAt" | "checkOutTimezone" | "checkInSource" | "checkOutSource"> & {
   employee: { name: string; position: string | null };
   state: AdminAttendanceState;
 };

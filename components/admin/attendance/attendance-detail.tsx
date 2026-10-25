@@ -1,4 +1,5 @@
 import { LocationEvidence } from "@/components/shared/location-evidence";
+import { AttendanceProvenanceNote } from "@/components/attendance/attendance-provenance";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { AttendanceStatus } from "@/components/admin/attendance/attendance-status";
 import { formatAdminEventTime, formatBusinessDate } from "@/lib/date-time/event-time";
@@ -7,14 +8,15 @@ import type { AdminAttendanceDetailDto } from "@/types/admin-attendance";
 
 export function AttendanceDetail({ item }: { item: AdminAttendanceDetailDto }) {
   const events = [
-    { label: "Check In", at: item.checkInAt, zone: item.checkInTimezone, latitude: item.checkInLatitude, longitude: item.checkInLongitude, accuracy: item.checkInAccuracy, address: item.checkInAddress, description: item.checkInDescription },
-    { label: "Check Out", at: item.checkOutAt, zone: item.checkOutTimezone, latitude: item.checkOutLatitude, longitude: item.checkOutLongitude, accuracy: item.checkOutAccuracy, address: item.checkOutAddress, description: item.checkOutDescription },
+    { label: "Check In", source: item.checkInSource, requestId: item.checkInCorrectionRequestId, at: item.checkInAt, zone: item.checkInTimezone, latitude: item.checkInLatitude, longitude: item.checkInLongitude, accuracy: item.checkInAccuracy, address: item.checkInAddress, description: item.checkInDescription },
+    { label: "Check Out", source: item.checkOutSource, requestId: item.checkOutCorrectionRequestId, at: item.checkOutAt, zone: item.checkOutTimezone, latitude: item.checkOutLatitude, longitude: item.checkOutLongitude, accuracy: item.checkOutAccuracy, address: item.checkOutAddress, description: item.checkOutDescription },
   ];
   return <div className="min-w-0 space-y-4 text-sm">
     <div className="space-y-1 break-words">
       <p className="text-lg font-semibold">{item.employee.name}</p>
       {item.employee.position && <p className="text-muted-foreground">{item.employee.position}</p>}
       <div className="flex flex-wrap items-center gap-2"><p>{formatBusinessDate(item.workDate)}</p><AttendanceStatus state={item.state} /></div>
+      <AttendanceProvenanceNote {...item} />
     </div>
     <div className="grid min-w-0 gap-4 md:grid-cols-2">{events.map(event => <Card key={event.label} className="min-w-0">
       <CardHeader><h2 className="font-semibold">{event.label}</h2></CardHeader><CardContent>
@@ -23,8 +25,9 @@ export function AttendanceDetail({ item }: { item: AdminAttendanceDetailDto }) {
             <div><dt className="text-muted-foreground">Event time</dt><dd className="break-words">{event.zone ? formatAdminEventTime(event.at, event.zone) : "Timezone unavailable"}</dd></div>
             <div><dt className="text-muted-foreground">Timezone</dt><dd className="break-words">{event.zone ?? "—"}</dd></div>
             {event.description && <div><dt className="text-muted-foreground">Description</dt><dd className="whitespace-pre-wrap break-words">{event.description}</dd></div>}
+            {event.requestId && <div><dt className="text-muted-foreground">Correction request</dt><dd className="break-words">{event.requestId}</dd></div>}
           </dl>
-          {event.latitude !== null && event.longitude !== null && event.accuracy !== null && <div className="mt-3"><LocationEvidence latitude={event.latitude} longitude={event.longitude} accuracy={event.accuracy} address={event.address} maps /></div>}
+          <div className="mt-3"><LocationEvidence latitude={event.latitude} longitude={event.longitude} accuracy={event.accuracy} address={event.address} source={event.source} maps /></div>
         </>}
       </CardContent>
     </Card>)}</div>

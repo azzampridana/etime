@@ -55,6 +55,8 @@ export async function getEmployeeReportDetail(raw: unknown): Promise<EmployeeRep
       const workDate = row.workDate.toISOString().slice(0, 10);
       const actualMinutes = row.checkOutAt ? elapsedWholeMinutes(row.checkInAt, row.checkOutAt) : null;
       return { id: row.id, workDate, checkInAt: row.checkInAt.toISOString(), checkInTimezone: row.checkInTimezone,
+        checkInSource: row.checkInSource, checkOutSource: row.checkOutSource,
+        checkInCorrectionRequestId: row.checkInCorrectionRequestId, checkOutCorrectionRequestId: row.checkOutCorrectionRequestId,
         checkOutAt: row.checkOutAt?.toISOString() ?? null, checkOutTimezone: row.checkOutTimezone,
         actualMinutes, requiredMinutes: row.requiredWorkMinutes, differenceMinutes: actualMinutes === null ? null : actualMinutes - row.requiredWorkMinutes,
         state: reportAttendanceState(workDate, row.checkOutAt, today), hasDailyReport: row.dailyReport !== null };

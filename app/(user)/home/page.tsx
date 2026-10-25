@@ -14,9 +14,10 @@ export default async function HomePage() {
   ]);
   const overtime = attendance ? await getHomeOvertime(identity.id, attendance.id) : null;
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <ProfileSummary user={profile} businessDateLabel={formatBusinessDate(getBusinessDate(now))} />
       <HomeSummaryCard
+        primary
         id="home-attendance" title={attendance ? "Attendance" : "Today's Attendance"}
         workDate={attendance?.workDate}
         status={!attendance ? "Not Checked In" : attendance.isOpen ? "Working" : "Completed"}
@@ -30,7 +31,7 @@ export default async function HomePage() {
       {overtime && <HomeSummaryCard
         id="home-overtime" title="Overtime"
         status={overtime.state === "authorized" ? "Authorized" : overtime.state === "incomplete" ? "Incomplete" : overtime.state === "open" ? "Overtime in Progress" : "Completed"}
-        tone={overtime.state === "completed" ? "success" : overtime.state === "incomplete" ? "neutral" : "active"}
+        tone={overtime.state === "completed" ? "success" : overtime.state === "incomplete" ? "warning" : "active"}
         description={overtime.state === "authorized" ? "Overtime has been authorized for this attendance." : undefined}
         showEvents={overtime.state !== "authorized"}
         checkIn={overtime.state === "authorized" ? null : overtime.checkIn}

@@ -120,7 +120,7 @@ export async function deleteUser(rawId: string, context: UserMutationContext) {
     const dependencies = await findUserDeletionDependencies(id, tx);
     // Attendance protects its DailyReport, authorization and overtime descendants too.
     // Issued grants retain a required, restricted grantedById reference, even if unused.
-    if (dependencies.attendance || dependencies.grant) {
+    if (dependencies.attendance || dependencies.grant || dependencies.correction || dependencies.overtimeCorrection) {
       throw new ApplicationError("USER_HAS_HISTORY", "This user cannot be deleted because operational history already exists. Deactivate the account instead.");
     }
     // Administrative audits are not blockers: existing actor FKs use SetNull on deletion.

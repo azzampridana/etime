@@ -181,6 +181,7 @@ export async function listAdminAttendance(raw: unknown): Promise<AdminAttendance
   }
   const { items, total } = await listAdminAttendanceRecords(input, groups);
   return { items: items.map(record => ({ id: record.id, workDate: record.workDate.toISOString().slice(0, 10),
+    checkInSource: record.checkInSource, checkOutSource: record.checkOutSource,
     checkInAt: record.checkInAt.toISOString(), checkInTimezone: record.checkInTimezone,
     checkOutAt: record.checkOutAt?.toISOString() ?? null, checkOutTimezone: record.checkOutTimezone,
     employee: record.user, state: monitoringState(record.workDate.toISOString().slice(0, 10), record.checkOutAt, today),

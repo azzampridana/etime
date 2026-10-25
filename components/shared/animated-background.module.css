@@ -1,0 +1,146 @@
+.shell {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+
+  --diagonal-base: #FAFCFF;
+  --diagonal-sage: #F1F7FD;
+  --diagonal-blue: #E5F0FB;
+  --diagonal-mist: #F5F9FE;
+  --diagonal-pale: #D8E9F8;
+
+  background: var(--diagonal-base);
+}
+
+/* Dark mode */
+:global(.dark) .shell {
+  --diagonal-base: #10171e;
+  --diagonal-sage: #1c3431;
+  --diagonal-blue: #25374a;
+  --diagonal-mist: #1c2d3e;
+  --diagonal-pale: #203a35;
+}
+
+/* Decorative background */
+.background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Desktop animation */
+.layer {
+  position: absolute;
+  inset: 0 -50%;
+
+  background: linear-gradient(
+    120deg,
+    var(--diagonal-sage) 50%,
+    var(--diagonal-blue) 50%
+  );
+
+  opacity: 0.65;
+  animation: slide 8s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.layer:nth-child(2) {
+  background: linear-gradient(
+    120deg,
+    var(--diagonal-mist) 50%,
+    var(--diagonal-pale) 50%
+  );
+
+  opacity: 0.35;
+  animation-duration: 12s;
+  animation-direction: alternate-reverse;
+}
+
+.layer:nth-child(3) {
+  background: linear-gradient(
+    120deg,
+    var(--diagonal-blue) 50%,
+    var(--diagonal-sage) 50%
+  );
+
+  opacity: 0.2;
+  animation-duration: 16s;
+}
+
+@keyframes slide {
+  from {
+    transform: translateX(-25%);
+  }
+
+  to {
+    transform: translateX(25%);
+  }
+}
+
+/* Mobile: more visible sliding diagonals */
+@media (max-width: 767px) {
+  .shell {
+    --diagonal-sage: #F1F7FD;
+    --diagonal-blue: #E5F0FB;
+    --diagonal-mist: #F5F9FE;
+    --diagonal-pale: #D8E9F8;
+  }
+
+  /* Keep mobile dark mode dark */
+  :global(.dark) .shell {
+    --diagonal-sage: #1b3935;
+    --diagonal-blue: #293e55;
+    --diagonal-mist: #213347;
+    --diagonal-pale: #234039;
+  }
+
+  .layer {
+    inset: -20% -110%;
+
+    opacity: 0.85;
+
+    background: linear-gradient(
+      135deg,
+      var(--diagonal-sage) 50%,
+      var(--diagonal-blue) 50%
+    );
+
+    animation-name: mobile-slide;
+    animation-duration: 7s;
+  }
+
+  .layer:nth-child(2) {
+    opacity: 0.45;
+    animation-duration: 10s;
+  }
+
+  .layer:nth-child(3) {
+    opacity: 0.25;
+    animation-duration: 14s;
+  }
+}
+
+@keyframes mobile-slide {
+  from {
+    transform: translateX(-28%);
+  }
+
+  to {
+    transform: translateX(28%);
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .layer {
+    animation: none;
+    will-change: auto;
+  }
+}

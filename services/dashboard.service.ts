@@ -1,4 +1,5 @@
 import "server-only";
+import { isCorrectionAffectedAttendance } from "@/lib/attendance/correction-policy";
 import { getOvertimeState } from "@/lib/overtime/state";
 import { getBusinessDate } from "@/lib/date-time/event-time";
 import { ADMIN_REFERENCE_TIMEZONE } from "@/lib/date-time/constants";
@@ -42,7 +43,7 @@ export async function getAdminDashboard() {
       const overtimeState = authorization?.overtime ? getOvertimeState(authorization.overtime, now) : null;
       const access = overtimeState ? (overtimeState === "Open" ? "In Progress" : overtimeState)
         : authorization?.revokedAt ? "Revoked"
-          : !canGrantOvertimeAuthorization(item.checkOutAt, item.user.isActive) ? "Unavailable"
+          : (!canGrantOvertimeAuthorization(item.checkOutAt, item.user.isActive) || isCorrectionAffectedAttendance(item)) ? "Unavailable"
             : authorization ? "Authorized" : "Grant OT";
       return { ...summarize(item), access };
     }),

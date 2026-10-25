@@ -1,4 +1,5 @@
 import "server-only";
+import { isCorrectionAffectedAttendance } from "@/lib/attendance/correction-policy";
 import { getOvertimeState } from "@/lib/overtime/state";
 import { overtimeActivityQuerySchema, overtimeAuthorizationMonitoringQuerySchema } from "@/schemas/admin-overtime-monitoring.schema";
 import { listOvertimeActivityRecords } from "@/repositories/overtime.repository";
@@ -16,9 +17,9 @@ export async function listOvertimeActivity(raw: unknown) {
   const items: OvertimeActivitySummary[] = result.items.map(row => {
     const state = getOvertimeState(row, now);
     return {
-      id: row.id, workDate: row.authorization.attendance.workDate.toISOString().slice(0, 10), employee: row.authorization.attendance.user,
+      checkOutSource: row.checkOutSource, id: row.id, workDate: row.authorization.attendance.workDate.toISOString().slice(0, 10), employee: row.authorization.attendance.user,
       checkIn: { at: row.checkInAt.toISOString(), timezone: row.checkInTimezone },
-      checkOut: row.checkOutAt && row.checkOutTimezone ? { at: row.checkOutAt.toISOString(), timezone: row.checkOutTimezone } : null,
+      checkOut: row.checkOutAt ? { at: row.checkOutAt.toISOString(), timezone: row.checkOutTimezone } : null,
       state: state === "Open" ? "In Progress" : state,
       durationMinutes: row.checkOutAt ? elapsedWholeMinutes(row.checkInAt, row.checkOutAt) : null,
     };
@@ -39,7 +40,8 @@ export async function listAuthorizationMonitoring(raw: unknown) {
       employee: { name: row.user.name, position: row.user.position }, authorizationState,
       state: authorization?.overtime ? "Activity Started" : authorizationState,
       authorization: authorization ? { note: authorization.note } : null,
-      revoked: !!authorization?.revokedAt, canGrant: canGrantOvertimeAuthorization(row.checkOutAt, row.user.isActive) };
+      revoked: !!authorization?.revokedAt, correctionAffected: isCorrectionAffectedAttendance(row),
+      canGrant: canGrantOvertimeAuthorization(row.checkOutAt, row.user.isActive) && !isCorrectionAffectedAttendance(row) };
   });
   return { items, total: result.total, page: input.page, pageSize: input.pageSize };
 }

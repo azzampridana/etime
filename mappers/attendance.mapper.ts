@@ -7,6 +7,9 @@ import { toDailyReportDto } from "@/mappers/daily-report.mapper";
 export function toAttendanceDto(record: AttendanceRecord): AttendanceDto {
   const actualDurationMinutes = record.checkOutAt ? elapsedWholeMinutes(record.checkInAt, record.checkOutAt) : null;
   return {
+    checkInSource: record.checkInSource, checkOutSource: record.checkOutSource,
+    checkInCorrectionRequestId: record.checkInCorrectionRequestId,
+    checkOutCorrectionRequestId: record.checkOutCorrectionRequestId,
     id: record.id, workDate: record.workDate.toISOString().slice(0, 10),
     requiredWorkMinutes: record.requiredWorkMinutes, checkInAt: record.checkInAt.toISOString(),
     checkInLatitude: record.checkInLatitude, checkInLongitude: record.checkInLongitude,

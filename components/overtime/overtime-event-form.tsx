@@ -91,21 +91,26 @@ export function OvertimeEventForm({ mode }: { mode: "check-in" | "check-out" }) 
     } catch { setMessage("Unable to reach the server. Check your connection and try again."); }
     finally { submitting.current = false; setPending(false); }
   }
-  return <Card className="min-w-0"><CardHeader><h2 className="text-lg font-semibold">{label}</h2><p className="text-sm text-muted-foreground">Get location, describe your work, then take an evidence photo.</p></CardHeader><CardContent>
+  return <Card className="min-w-0 rounded-2xl bg-white/95 shadow-sm shadow-slate-950/5 ring-slate-200/70 [--card-spacing:--spacing(5)] sm:[--card-spacing:--spacing(6)]"><CardHeader><h2 className="text-lg font-semibold">{label}</h2><p className="text-sm text-muted-foreground">Get location, describe your work, then take an evidence photo.</p></CardHeader><CardContent>
     <form onSubmit={submit} className="min-w-0 space-y-5" aria-busy={pending}>
-      <section className="space-y-3 [overflow-wrap:anywhere]" aria-label="Event location"><h3 className="font-medium">Location</h3><div aria-live="polite">
+      <dl aria-label="Evidence readiness" className="grid grid-cols-1 gap-2 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 text-xs min-[360px]:grid-cols-3">
+        <div><dt className="text-slate-600">Location</dt><dd className="mt-1 font-semibold">{snapshot && status === "ready" && remaining > 0 ? "Ready" : status === "loading" ? "Preparing" : status === "expired" ? "Expired" : "Required"}</dd></div>
+        <div><dt className="text-slate-600">Description</dt><dd className="mt-1 font-semibold">{description.trim() ? "Ready" : "Required"}</dd></div>
+        <div><dt className="text-slate-600">Photo</dt><dd className="mt-1 font-semibold">{snapshot && remaining > 0 && photo ? "Captured" : "Required"}</dd></div>
+      </dl>
+      <section className="space-y-3 [overflow-wrap:anywhere]" aria-label="Event location"><h3 className="font-semibold">Location</h3><div aria-live="polite" className={`space-y-2 rounded-xl border p-4 text-sm leading-6 ${status === "expired" ? "border-amber-200 bg-amber-50 text-amber-900" : status === "error" ? "border-red-200 bg-red-50 text-red-900" : snapshot ? "border-indigo-100 bg-indigo-50/50" : "border-slate-200 bg-slate-50"}`}>
         {status === "idle" && <p>Get your location to enable the camera.</p>}
         {status === "loading" && <p>Detecting and preparing your location…</p>}
         {status === "error" && <p>Location could not be prepared. Please try again.</p>}
         {status === "expired" && <><p className="font-semibold text-amber-900">Location expired</p><p>Your location session has expired. Please get your location again and capture a new photo.</p></>}
         {snapshot && <><p className="font-medium text-teal-800">Location ready</p>
           {snapshot.address && <div><p>{snapshot.address}</p><GeocodingAttribution /></div>}
-          <p className="text-sm">{snapshot.evidence.latitude}, {snapshot.evidence.longitude} · ±{snapshot.evidence.accuracy} m</p><p className="text-sm">{snapshot.evidence.timezone}</p></>}
+          <details><summary className="min-h-11 cursor-pointer py-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-indigo-700">GPS evidence &amp; timezone</summary><p className="text-xs">{snapshot.evidence.latitude}, {snapshot.evidence.longitude} · ±{snapshot.evidence.accuracy} m</p><p className="text-xs">{snapshot.evidence.timezone}</p></details></>}
       </div>
         {snapshot && <p className="text-xs text-muted-foreground">Location valid for {Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, "0")}</p>}
         <Button type="button" variant="outline" className="min-h-12 w-full" disabled={pending || status === "loading"} onClick={locate}>{snapshot ? "Refresh Location" : "Get Location"}</Button>
       </section>
-      <div className="space-y-2"><Label htmlFor={`${mode}-description`}>Description (required)</Label><textarea id={`${mode}-description`} required maxLength={1000} rows={4} value={description} onChange={event => setDescription(event.target.value)} disabled={pending} className="w-full rounded-lg border bg-background p-3 text-base" /></div>
+      <div className="space-y-2"><Label htmlFor={`${mode}-description`}>Description (required)</Label><textarea id={`${mode}-description`} required maxLength={1000} rows={4} value={description} onChange={event => setDescription(event.target.value)} disabled={pending} className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50/50 p-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-indigo-600" /></div>
       <section className="min-w-0 space-y-3" aria-label="Photo evidence"><h3 className="font-medium">Photo Evidence (required)</h3>
         {!snapshot && <><p className="text-sm text-muted-foreground">A fresh location is required before opening the camera.</p><Button type="button" variant="outline" disabled className="min-h-12 w-full">Open Camera</Button></>}
         {snapshot && !photo && <DirectCamera key={snapshot.receipt} disabled={pending} startOnMount={retaking} isFresh={isFresh} onCapture={file => {
@@ -113,8 +118,9 @@ export function OvertimeEventForm({ mode }: { mode: "check-in" | "check-out" }) 
           setPhoto(file); setPreview(URL.createObjectURL(file)); setCapturedAt(new Date().toISOString()); setRetaking(false);
         }} />}
         {snapshot && photo && preview && <>
-          <div className="relative overflow-hidden rounded-lg bg-black">
-            <img src={preview} alt="Captured overtime evidence, not yet saved" className="max-h-[32rem] w-full object-contain" />
+          <p className="w-fit rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900">Photo captured</p>
+          <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-950">
+            <img src={preview} alt="Captured overtime evidence, not yet saved" className="max-h-80 w-full object-contain" />
             <div className="absolute inset-x-0 bottom-0 space-y-0.5 bg-black/75 p-2 text-xs text-white [overflow-wrap:anywhere]">
               <p className="font-semibold">{mode === "check-in" ? "OVERTIME CHECK-IN" : "OVERTIME CHECK-OUT"}</p>
               <p>{formatAdminEventTime(capturedAt, snapshot.evidence.timezone)}</p>
@@ -129,8 +135,8 @@ export function OvertimeEventForm({ mode }: { mode: "check-in" | "check-out" }) 
           }}>Retake Photo</Button>
         </>}
       </section>
-      {message && <p role="status" className="break-words">{message}</p>}
-      <Button type="submit" className="min-h-12 w-full" disabled={pending || !snapshot || !description.trim() || !photo}>{pending ? "Saving overtime…" : label}</Button>
+      {message && <p role="status" className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm [overflow-wrap:anywhere]">{message}</p>}
+      <Button type="submit" className="min-h-12 w-full rounded-xl bg-indigo-700 text-white hover:bg-indigo-800 motion-safe:active:scale-[0.99] motion-reduce:transition-none" disabled={pending || !snapshot || !description.trim() || !photo}>{pending ? "Saving overtime…" : label}</Button>
     </form>
   </CardContent></Card>;
 }

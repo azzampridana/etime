@@ -42,17 +42,17 @@ export function OpenAttendanceWorkflow({ report, attendanceId }: { report: Daily
     }
   }
 
-  return <div className="space-y-6">
-    <Card>
-      <CardHeader><h2 className="text-lg font-semibold">Daily Report</h2><p className="text-muted-foreground">Describe today's work. Save your report before checkout.</p></CardHeader>
+  return <div className="space-y-4">
+    <Card className="min-w-0 rounded-2xl">
+      <CardHeader><h2 className="text-base font-semibold">Daily Report</h2><p className="text-muted-foreground">Describe today's work. Save your report before checkout.</p></CardHeader>
       <CardContent>
         <form onSubmit={save} className="space-y-4" aria-busy={pending}>
           <Label htmlFor="daily-report">Work completed</Label>
-          <textarea id="daily-report" required maxLength={DAILY_REPORT_MAX_LENGTH} rows={6} value={content} onChange={(event) => setContent(event.target.value)} disabled={pending || checkoutPending}
+          <textarea id="daily-report" required maxLength={DAILY_REPORT_MAX_LENGTH} rows={4} value={content} onChange={(event) => setContent(event.target.value)} disabled={pending || checkoutPending}
             className="w-full resize-y rounded-lg border border-input bg-background p-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-          <p className="text-sm text-muted-foreground">{saved ? dirty ? "Unsaved changes. Save before checking out." : "Your report is saved. You can update it until checkout." : "A saved Daily Report is required for checkout."}</p>
+          <p className={`rounded-xl border px-3 py-2.5 text-sm leading-6 ${saved && !dirty ? "border-emerald-100 bg-emerald-50 text-emerald-900" : "border-amber-100 bg-amber-50 text-amber-900"}`}>{saved ? dirty ? "Unsaved changes. Save before checking out." : "Your report is saved. You can update it until checkout." : "A saved Daily Report is required for checkout."}</p>
           <p role="status" className="break-words text-sm">{message}</p>
-          <Button type="submit" className="min-h-12 w-full" disabled={pending || checkoutPending || !content.trim()}>{pending ? "Saving…" : "Save Daily Report"}</Button>
+          <Button type="submit" className="min-h-12 w-full rounded-xl bg-blue-700 text-white hover:bg-blue-800 motion-reduce:transition-none" disabled={pending || checkoutPending || !content.trim()}>{pending ? "Saving…" : "Save Daily Report"}</Button>
         </form>
       </CardContent>
     </Card>

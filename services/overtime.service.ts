@@ -1,4 +1,10 @@
 import "server-only";
+import { requireUser } from "@/lib/authorization/require-user";
+import { overtimeHistorySchema } from "@/schemas/overtime.schema";
+import { listOwnOvertimeHistory, findOwnOvertimeDetail } from "@/repositories/overtime.repository";
+import { toOvertimeHistoryDto, toOwnOvertimeDetailDto } from "@/mappers/overtime.mapper";
+
+import { isCorrectionAffectedAttendance } from "@/lib/attendance/correction-policy";
 import { getOvertimeState } from "@/lib/overtime/state";
 import { snapshotOvertimePolicy } from "@/services/overtime-policy.service";
 import { resolveEventAddress, type ReverseGeocoder } from "@/lib/geolocation/reverse-geocoding";
@@ -22,6 +28,23 @@ import { adminOvertimeQuerySchema } from "@/schemas/admin-query.schema";
 import { listAdminOvertimeRecords, findAdminOvertimeById } from "@/repositories/overtime.repository";
 import { toAdminOvertimeDto } from "@/mappers/overtime.mapper";
 
+export async function getOwnOvertimeHistory(raw: unknown) {
+  const user = await requireUser();
+  const { page } = overtimeHistorySchema.parse(raw);
+  const pageSize = 15;
+  const result = await listOwnOvertimeHistory(user.id, page, pageSize);
+  const now = new Date();
+  return { items: result.items.map(row => toOvertimeHistoryDto(row, now)), total: result.total, page, pageSize };
+}
+
+export async function getOwnOvertimeDetail(rawId: unknown) {
+  const user = await requireUser();
+  const id = z.uuid().safeParse(rawId);
+  if (!id.success) return null;
+  const row = await findOwnOvertimeDetail(user.id, id.data);
+  return row ? toOwnOvertimeDetailDto(row, new Date()) : null;
+}
+
 async function requireActive(userId: string) {
   const user = await findUserById(userId);
   if (!user?.isActive) throw new ApplicationError("UNAUTHENTICATED", "Please sign in with an active account.");
@@ -32,6 +55,7 @@ async function resolveStart(userId: string, tx?: DatabaseTransaction, now = new 
   // Only the latest regular attendance is actionable; never fall back to older grants.
   const attendance = await findLatestOvertimeAttendance(userId, tx);
   if (!attendance?.checkOutAt) throw new ApplicationError("ATTENDANCE_INCOMPLETE", "Complete your latest regular attendance before starting overtime.");
+  if (isCorrectionAffectedAttendance(attendance)) throw new ApplicationError("CORRECTED_ATTENDANCE", "Overtime cannot start from an ADMIN-corrected Attendance.");
   const authorization = attendance.overtimeAuthorization;
   if (!authorization || authorization.revokedAt) throw new ApplicationError("NO_AUTHORIZATION", "No active overtime authorization is available for your latest attendance.");
   if (authorization.overtime) throw new ApplicationError("OVERTIME_EXISTS", "Overtime has already been recorded for this authorization.");
@@ -132,6 +156,7 @@ export async function getOvertimePage(userId: string): Promise<OvertimePageDto> 
     const overtime = toOvertimeDto(authorization.overtime, now);
     return { state: overtime.state === "Open" ? "open" : overtime.state === "Incomplete" ? "incomplete" : "completed", overtime, previousIncomplete };
   }
+  if (latest && isCorrectionAffectedAttendance(latest)) return { state: "unavailable", previousIncomplete, message: "Overtime cannot start from an ADMIN-corrected Attendance." };
   if (latest?.checkOutAt && authorization && !authorization.revokedAt) return { state: "authorized", workDate: latest.workDate.toISOString().slice(0, 10), note: authorization.note, previousIncomplete };
   return { state: "unavailable", previousIncomplete, message: "No overtime authorization is currently available for your latest regular attendance. Complete regular attendance and ask your administrator if overtime is needed." };
 }
@@ -145,10 +170,10 @@ export async function getHomeOvertime(userId: string, attendanceId: string): Pro
   if (overtime) return {
     state: getOvertimeState(overtime, new Date()) === "Incomplete" ? "incomplete" : overtime.checkOutAt ? "completed" : "open",
     checkIn: { at: overtime.checkInAt.toISOString(), timezone: overtime.checkInTimezone },
-    checkOut: overtime.checkOutAt && overtime.checkOutTimezone
+    checkOut: overtime.checkOutAt
       ? { at: overtime.checkOutAt.toISOString(), timezone: overtime.checkOutTimezone } : null,
   };
-  return attendance?.checkOutAt && authorization && !authorization.revokedAt
+  return attendance?.checkOutAt && !isCorrectionAffectedAttendance(attendance) && authorization && !authorization.revokedAt
     ? { state: "authorized" } : null;
 }
 export async function readOvertimePhoto(userId: string, rawId: unknown, rawEvent: unknown, storage: StorageService = getStorage()) {

@@ -15,7 +15,7 @@ function eventTime(at: string | null, timezone: string | null) {
   return at && timezone ? formatAdminEventTime(at, timezone) : null;
 }
 function location(latitude: number | null, longitude: number | null, accuracy: number | null, address: string | null) {
-  return latitude === null || longitude === null ? null : `${latitude}, ${longitude} · ±${accuracy} m${address ? `\n${address}` : ""}`;
+  return latitude === null || longitude === null ? null : `${latitude}, ${longitude}${accuracy === null ? "" : ` · ±${accuracy} m`}${address ? `\n${address}` : ""}`;
 }
 export function reportFilename(filters: Pick<ReportQuery, "from" | "to">) {
   return `etime-attendance-${filters.from}-to-${filters.to}.xlsx`;
@@ -31,7 +31,8 @@ export async function buildReportWorkbook(items: ReportDto[], filters: ReportQue
     "Regular Duration (minutes)", "Required Duration (minutes)", "Difference (minutes)", "Daily Report",
     "Overtime Authorization State", "Authorization Granted At (UTC)", "Authorization Revoked At (UTC)", "Authorization Note",
     "OT State", "OT Check-In Local", "OT Check-In Timezone", "OT Check-In Location", "OT Check-In Description",
-    "OT Check-Out Local", "OT Check-Out Timezone", "OT Check-Out Location", "OT Check-Out Description", "OT Duration (minutes)"];
+    "OT Check-Out Local", "OT Check-Out Timezone", "OT Check-Out Location", "OT Check-Out Description", "OT Duration (minutes)",
+    "Regular Check-In Source", "Regular Check-Out Source", "Check-In Correction Request ID", "Check-Out Correction Request ID", "OT Checkout Source", "OT Checkout Correction Request ID"];
   sheet.columns = headers.map(header => ({ width: /Description|Report|Note|Location/.test(header) ? 45 : /Local|Email|ID/.test(header) ? 34 : 24 }));
   const add = (values: (string | number | null)[]) => sheet.addRow(values.map(value => typeof value === "string" ? sanitizeExcelText(value) : value));
   add(["ETime Attendance Report"]); sheet.getRow(1).font = { bold: true, size: 16 };
@@ -51,8 +52,9 @@ export async function buildReportWorkbook(items: ReportDto[], filters: ReportQue
       row.authorizationState, row.authorization?.grantedAt ?? null, row.authorization?.revokedAt ?? null, row.authorization?.note ?? null,
       overtime?.state ?? null,
       checkIn ? eventTime(checkIn.at, checkIn.timezone) : null, checkIn?.timezone ?? null, checkIn ? location(checkIn.latitude, checkIn.longitude, checkIn.accuracy, checkIn.address) : null, checkIn?.description ?? null,
-      checkOut ? eventTime(checkOut.at, checkOut.timezone) : overtime?.state === "Incomplete" ? "Missing Checkout" : null, checkOut?.timezone ?? null, checkOut ? location(checkOut.latitude, checkOut.longitude, checkOut.accuracy, checkOut.address) : null, checkOut?.description ?? null,
-      overtime?.durationMinutes ?? null]);
+      checkOut ? eventTime(checkOut.at, checkOut.timezone ?? "Asia/Jakarta") : overtime?.state === "Incomplete" ? "Missing Checkout" : null, checkOut?.timezone ?? null, checkOut ? location(checkOut.latitude, checkOut.longitude, checkOut.accuracy, checkOut.address) : null, checkOut?.description ?? null,
+      overtime?.durationMinutes ?? null,
+      row.checkInSource, row.checkOutSource, row.checkInCorrectionRequestId, row.checkOutCorrectionRequestId, overtime?.checkOutSource ?? null, overtime?.checkOutCorrectionRequestId ?? null]);
     excelRow.alignment = { vertical: "top", wrapText: true };
   }
   return workbook.xlsx.writeBuffer();
@@ -92,10 +94,11 @@ export async function buildEmployeeReportWorkbook({ items, summaries, filters }:
     "Check In", "Check In Timezone", "Check In Description", "Check In Address", "Check In Latitude", "Check In Longitude", "Check In Accuracy (m)",
     "Check Out", "Check Out Timezone", "Check Out Description", "Check Out Address", "Check Out Latitude", "Check Out Longitude", "Check Out Accuracy (m)",
     "Actual Duration (minutes)", "Required Duration (minutes)", "Difference (minutes)", "Daily Report",
-    "Authorization State", "Granted At (UTC)", "Revoked At (UTC)", "Authorization Note"]);
+    "Authorization State", "Granted At (UTC)", "Revoked At (UTC)", "Authorization Note",
+    "Check-In Source", "Check-Out Source", "Check-In Correction Request ID", "Check-Out Correction Request ID"]);
   const overtime = worksheet("Overtime Detail", ["Overtime ID", "Employee", "Email", "Position", "Work Date", "Status",
     "OT Check In", "Check In Timezone", "Check In Description", "Check In Address", "Check In Latitude", "Check In Longitude", "Check In Accuracy (m)",
-    "OT Check Out", "Check Out Timezone", "Check Out Description", "Check Out Address", "Check Out Latitude", "Check Out Longitude", "Check Out Accuracy (m)", "OT Duration (minutes)"]);
+    "OT Check Out", "Check Out Timezone", "Check Out Description", "Check Out Address", "Check Out Latitude", "Check Out Longitude", "Check Out Accuracy (m)", "OT Duration (minutes)", "Checkout Source", "Checkout Correction Request ID"]);
   for (const row of items) {
     const closed = row.checkOutAt !== null;
     attendance.add([row.id, row.employee.name, row.employee.email, row.employee.position, row.workDate, row.state,
@@ -103,14 +106,15 @@ export async function buildEmployeeReportWorkbook({ items, summaries, filters }:
       eventTime(row.checkOutAt, row.checkOutTimezone), closed ? row.checkOutTimezone : null, closed ? row.checkOutDescription : null, closed ? row.checkOutAddress : null,
       closed ? row.checkOutLatitude : null, closed ? row.checkOutLongitude : null, closed ? row.checkOutAccuracy : null,
       row.actualDurationMinutes, row.requiredWorkMinutes, row.differenceMinutes, row.dailyReport?.content ?? null,
-      row.authorizationState, row.authorization?.grantedAt ?? null, row.authorization?.revokedAt ?? null, row.authorization?.note ?? null]);
+      row.authorizationState, row.authorization?.grantedAt ?? null, row.authorization?.revokedAt ?? null, row.authorization?.note ?? null,
+      row.checkInSource, row.checkOutSource, row.checkInCorrectionRequestId, row.checkOutCorrectionRequestId]);
     const ot = row.overtime;
     if (!ot) continue;
     const checkIn = ot.checkIn, checkOut = ot.checkOut;
     overtime.add([ot.id, row.employee.name, row.employee.email, row.employee.position, row.workDate, ot.state === "Open" ? "In Progress" : ot.state,
       eventTime(checkIn.at, checkIn.timezone), checkIn.timezone, checkIn.description, checkIn.address, checkIn.latitude, checkIn.longitude, checkIn.accuracy,
-      ot.state === "Incomplete" ? "Missing Checkout" : eventTime(checkOut?.at ?? null, checkOut?.timezone ?? null), checkOut?.timezone ?? null, checkOut?.description ?? null, checkOut?.address ?? null,
-      checkOut?.latitude ?? null, checkOut?.longitude ?? null, checkOut?.accuracy ?? null, ot.durationMinutes]);
+      ot.state === "Incomplete" ? "Missing Checkout" : eventTime(checkOut?.at ?? null, checkOut?.timezone ?? "Asia/Jakarta"), checkOut?.timezone ?? null, checkOut?.description ?? null, checkOut?.address ?? null,
+      checkOut?.latitude ?? null, checkOut?.longitude ?? null, checkOut?.accuracy ?? null, ot.durationMinutes, ot.checkOutSource, ot.checkOutCorrectionRequestId]);
   }
   return workbook.xlsx.writeBuffer();
 }

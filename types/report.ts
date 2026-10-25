@@ -1,4 +1,5 @@
 import type { AdminAttendanceDto } from "@/types/admin-attendance";
+import type { AttendanceProvenance } from "@/types/attendance";
 import type { OvertimeDto } from "@/types/overtime";
 import type { OvertimeAuthorizationState } from "@/types/overtime-authorization";
 
@@ -14,7 +15,7 @@ export type EmployeeReportSummary = {
   regularMinutes: number; averageMinutes: number | null; requiredMinutes: number | null;
   differenceMinutes: number | null; overtimeSessions: number; overtimeMinutes: number;
 };
-export type EmployeeReportAttendance = {
+export type EmployeeReportAttendance = AttendanceProvenance & {
   id: string; workDate: string; checkInAt: string; checkInTimezone: string;
   checkOutAt: string | null; checkOutTimezone: string | null;
   actualMinutes: number | null; requiredMinutes: number; differenceMinutes: number | null;

@@ -1,4 +1,5 @@
 import "server-only";
+import { isCorrectionAffectedAttendance } from "@/lib/attendance/correction-policy";
 import { inTransaction } from "@/lib/db/transaction";
 import { ApplicationError } from "@/lib/errors/application-error";
 import { assertAdmin } from "@/lib/authorization/policy";
@@ -35,6 +36,7 @@ async function transition(actorId: string, raw: unknown, operation: "grant" | "r
       const user = await findUserById(attendance.user.id, tx);
       if (!canGrantOvertimeAuthorization(attendance.checkOutAt, user?.isActive ?? false)) throw new ApplicationError("USER_INACTIVE", "An inactive user cannot receive overtime authorization.");
       if (previous && !previous.revokedAt) return { item: toAuthorizationAttendanceDto(attendance), message: "Already authorized." };
+      if (isCorrectionAffectedAttendance(attendance)) throw new ApplicationError("CORRECTED_ATTENDANCE", "Attendance corrected by ADMIN cannot be used for a new Overtime Authorization.");
     } else if (!previous || previous.revokedAt) {
       return { item: toAuthorizationAttendanceDto(attendance), message: previous ? "Already revoked." : "Attendance is not authorized." };
     }

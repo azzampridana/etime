@@ -1,3 +1,4 @@
+import { OvertimeCheckoutProvenance } from "@/components/overtime/checkout-provenance";
 import Link from "next/link";
 import { LocationEvidence } from "@/components/shared/location-evidence";
 import { RetainedEvidencePhoto } from "@/components/admin/overtime/retained-evidence-photo";
@@ -9,6 +10,7 @@ import type { OvertimeMonitoringDetail } from "@/types/admin-overtime-monitoring
 
 export function OvertimeDetail({ item }: { item: OvertimeMonitoringDetail }) {
   return <div className="min-w-0 space-y-4 text-sm">
+    <OvertimeCheckoutProvenance source={item.checkOutSource} requestId={item.checkOutCorrectionRequestId} />
     <div className="space-y-1 break-words"><p className="text-lg font-semibold">{item.employee.name}</p>{item.employee.position && <p className="text-muted-foreground">{item.employee.position}</p>}
       <div className="flex flex-wrap items-center gap-2"><p>{formatBusinessDate(item.workDate)}</p><OvertimeMonitoringStatus state={item.state} /></div>
       <p>Actual OT Duration: {item.durationMinutes === null ? "—" : formatDurationMinutes(item.durationMinutes)}</p>
@@ -16,11 +18,11 @@ export function OvertimeDetail({ item }: { item: OvertimeMonitoringDetail }) {
     <div className="grid min-w-0 gap-4 md:grid-cols-2">{([["Check In", item.checkIn], ["Check Out", item.checkOut]] as const).map(([label, event]) => <Card key={label} className="min-w-0">
       <CardHeader><h2 className="font-semibold">OT {label}</h2></CardHeader><CardContent className="space-y-3">
         {event ? <><dl className="space-y-3 break-words">
-          <div><dt className="text-muted-foreground">Event time</dt><dd>{formatAdminEventTime(event.at, event.timezone)}</dd></div>
-          <div><dt className="text-muted-foreground">Timezone</dt><dd>{event.timezone}</dd></div>
-          <div><dt className="text-muted-foreground">Description</dt><dd className="whitespace-pre-wrap">{event.description}</dd></div>
+          <div><dt className="text-muted-foreground">Event time</dt><dd>{formatAdminEventTime(event.at, event.timezone ?? "Asia/Jakarta")}</dd></div>
+          <div><dt className="text-muted-foreground">Timezone</dt><dd>{event.timezone ?? "Not recorded (time shown in WIB)"}</dd></div>
+          <div><dt className="text-muted-foreground">Description</dt><dd className="whitespace-pre-wrap">{event.description ?? "Not recorded"}</dd></div>
         </dl><LocationEvidence latitude={event.latitude} longitude={event.longitude} accuracy={event.accuracy} address={event.address} maps />
-          <RetainedEvidencePhoto key={event.photoUrl} url={event.photoUrl} alt={`Watermarked overtime ${label} evidence`} />
+          {event.photoUrl ? <RetainedEvidencePhoto key={event.photoUrl} url={event.photoUrl} alt={`Watermarked overtime ${label} evidence`} /> : <p>Photo: Not recorded</p>}
         </> : <p className="text-muted-foreground">{item.state === "Incomplete" ? "Missing Checkout" : "Checkout not recorded yet."}</p>}
       </CardContent>
     </Card>)}</div>

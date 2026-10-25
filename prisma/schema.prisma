@@ -12,6 +12,37 @@ enum Role {
   USER
 }
 
+enum OvertimeCorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum OvertimeCheckoutSource {
+  NORMAL
+  ADMIN_CORRECTION
+}
+
+enum AttendanceEventSource {
+  NORMAL
+  ADMIN_CORRECTION
+}
+
+enum AttendanceCorrectionType {
+  MISSING_CHECKOUT
+  MISSING_BOTH
+}
+
+enum AttendanceCorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AttendanceCorrectionSnapshotBasis {
+  WORK_SCHEDULE_AT_SUBMISSION
+}
+
 model WorkSchedule {
   id                  String   @id @default(uuid()) @db.Char(36)
   name                String   @unique @db.VarChar(100)
@@ -40,6 +71,10 @@ model User {
   auditLogs      AuditLog[]
   attendances    Attendance[]
   overtimeGrants OvertimeAuthorization[]
+  correctionRequests AttendanceCorrectionRequest[] @relation("CorrectionRequester")
+  correctionReviews AttendanceCorrectionRequest[] @relation("CorrectionReviewer")
+  overtimeCorrectionRequests OvertimeCorrectionRequest[] @relation("OvertimeCorrectionRequester")
+  overtimeCorrectionReviews OvertimeCorrectionRequest[] @relation("OvertimeCorrectionReviewer")
 
   @@index([workScheduleId])
   @@index([isActive, role])
@@ -55,9 +90,9 @@ model Attendance {
   workDate            DateTime @db.Date
   requiredWorkMinutes Int      @db.UnsignedSmallInt
   checkInAt           DateTime @db.DateTime(3)
-  checkInLatitude     Float
-  checkInLongitude    Float
-  checkInAccuracy     Float
+  checkInLatitude     Float?
+  checkInLongitude    Float?
+  checkInAccuracy     Float?
   checkInAddress      String?  @db.VarChar(500)
   checkInTimezone     String   @db.VarChar(100)
   checkInDescription  String?  @db.VarChar(1000)
@@ -69,6 +104,13 @@ model Attendance {
   checkOutAddress     String?  @db.VarChar(500)
   checkOutTimezone    String?  @db.VarChar(100)
   checkOutDescription String?  @db.VarChar(1000)
+  checkInSource       AttendanceEventSource @default(NORMAL)
+  checkOutSource      AttendanceEventSource?
+  checkInCorrectionRequestId String? @db.Char(36)
+  checkOutCorrectionRequestId String? @db.Char(36)
+  checkInCorrectionRequest AttendanceCorrectionRequest? @relation("CorrectedCheckIn", fields: [checkInCorrectionRequestId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  checkOutCorrectionRequest AttendanceCorrectionRequest? @relation("CorrectedCheckOut", fields: [checkOutCorrectionRequestId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  correctionRequests AttendanceCorrectionRequest[] @relation("CorrectionAttendance")
   dailyReport         DailyReport?
   overtimeAuthorization OvertimeAuthorization?
   createdAt           DateTime @default(now()) @db.DateTime(3)
@@ -76,9 +118,55 @@ model Attendance {
 
   @@unique([userId, workDate])
   @@index([userId, checkOutAt])
+  @@index([checkInCorrectionRequestId], map: "attendance_checkin_correction_idx")
+  @@index([checkOutCorrectionRequestId], map: "attendance_checkout_correction_idx")
   // Global admin work-date range and deterministic list ordering.
   @@index([workDate, checkInAt, id])
   @@map("attendance")
+}
+
+// Proposal/review storage only. Submission and approval are introduced in later phases.
+model AttendanceCorrectionRequest {
+  id String @id @default(uuid()) @db.Char(36)
+  userId String @db.Char(36)
+  user User @relation("CorrectionRequester", fields: [userId], references: [id], onDelete: Restrict)
+  attendanceId String? @db.Char(36)
+  attendance Attendance? @relation("CorrectionAttendance", fields: [attendanceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  workDate DateTime @db.Date
+  type AttendanceCorrectionType
+  requestedCheckInAt DateTime? @db.DateTime(3)
+  requestedCheckOutAt DateTime @db.DateTime(3)
+  // Declared historical zones, not captured device/GPS evidence.
+  requestedCheckInTimezone String? @db.VarChar(100)
+  requestedCheckOutTimezone String @db.VarChar(100)
+  // Required for MISSING_BOTH; existing Attendance retains its own snapshot.
+  requiredWorkMinutes Int? @db.UnsignedSmallInt
+  snapshotBasis AttendanceCorrectionSnapshotBasis?
+  snapshotWorkScheduleId String? @db.Char(36)
+  snapshotWorkScheduleName String? @db.VarChar(100)
+  // Schedule ID/name are historical snapshot values, not a mutable schedule relation.
+  reason String @db.VarChar(2000)
+  proposedDailyReportContent String? @db.Text
+  status AttendanceCorrectionStatus @default(PENDING)
+  // Later transitions must keep 1 for PENDING and NULL for terminal states.
+  pendingSlot Int? @default(1) @db.UnsignedTinyInt
+  reviewedById String? @db.Char(36)
+  reviewedBy User? @relation("CorrectionReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+  reviewedAt DateTime? @db.DateTime(3)
+  reviewNote String? @db.VarChar(2000)
+  originalAttendanceSnapshot Json?
+  appliedApprovalSnapshot Json?
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  correctedCheckIns Attendance[] @relation("CorrectedCheckIn")
+  correctedCheckOuts Attendance[] @relation("CorrectedCheckOut")
+
+  @@unique([userId, workDate, pendingSlot], map: "correction_pending_user_date_key")
+  @@index([status, createdAt, id], map: "correction_status_created_idx")
+  @@index([userId, workDate, createdAt], map: "correction_user_date_created_idx")
+  @@index([attendanceId], map: "correction_attendance_idx")
+  @@index([reviewedById, reviewedAt], map: "correction_reviewer_date_idx")
+  @@map("attendancecorrectionrequest")
 }
 
 model OvertimeAuthorization {
@@ -130,11 +218,43 @@ model Overtime {
   checkOutTimezone    String?  @db.VarChar(100)
   checkOutDescription String?  @db.VarChar(1000)
   checkOutPhotoPath   String?  @db.VarChar(500)
+  checkOutSource OvertimeCheckoutSource?
+  checkOutCorrectionRequestId String? @unique(map: "overtime_checkout_correction_key") @db.Char(36)
+  checkOutCorrectionRequest OvertimeCorrectionRequest? @relation("AppliedOvertimeCorrection", fields: [checkOutCorrectionRequestId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  correctionRequests OvertimeCorrectionRequest[] @relation("OvertimeCorrectionTarget")
   createdAt           DateTime @default(now()) @db.DateTime(3)
   updatedAt           DateTime @updatedAt @db.DateTime(3)
 
   @@index([checkOutAt])
   @@map("overtime")
+}
+
+// Storage only; submission and decision workflows are deferred.
+model OvertimeCorrectionRequest {
+  id String @id @default(uuid()) @db.Char(36)
+  overtimeId String @db.Char(36)
+  overtime Overtime @relation("OvertimeCorrectionTarget", fields: [overtimeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  userId String @db.Char(36)
+  user User @relation("OvertimeCorrectionRequester", fields: [userId], references: [id], onDelete: Restrict)
+  status OvertimeCorrectionStatus @default(PENDING)
+  reason String @db.VarChar(2000)
+  proposedCheckOutAt DateTime @db.DateTime(3)
+  originalOvertimeSnapshot Json
+  // Future writers explicitly set 1 for PENDING and NULL for terminal requests.
+  pendingSlot Int? @default(1) @db.UnsignedTinyInt
+  reviewedById String? @db.Char(36)
+  reviewedBy User? @relation("OvertimeCorrectionReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+  reviewedAt DateTime? @db.DateTime(3)
+  reviewNote String? @db.VarChar(2000)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  appliedCheckout Overtime? @relation("AppliedOvertimeCorrection")
+
+  @@unique([overtimeId, pendingSlot], map: "ot_correction_pending_key")
+  @@index([status, createdAt, id], map: "ot_correction_status_created_idx")
+  @@index([userId, createdAt, id], map: "ot_correction_user_created_idx")
+  @@index([reviewedById, reviewedAt], map: "ot_correction_reviewer_idx")
+  @@map("overtimecorrectionrequest")
 }
 
 model DailyReport {

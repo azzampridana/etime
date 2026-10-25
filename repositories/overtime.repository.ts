@@ -6,6 +6,7 @@ import type { DatabaseTransaction } from "@/lib/db/transaction";
 import type { AdminOvertimeQuery } from "@/schemas/admin-query.schema";
 
 export const overtimeSelect = {
+  checkOutSource: true, checkOutCorrectionRequestId: true,
   id: true, authorizationId: true, maxOpenMinutes: true, checkInAt: true, checkInLatitude: true, checkInLongitude: true,
   checkInAccuracy: true, checkInAddress: true, checkInTimezone: true, checkInDescription: true, checkInPhotoPath: true,
   checkOutAt: true, checkOutLatitude: true, checkOutLongitude: true, checkOutAccuracy: true,
@@ -13,6 +14,32 @@ export const overtimeSelect = {
   authorization: { select: { revokedAt: true, attendance: { select: { id: true, userId: true, workDate: true } } } },
 } satisfies Prisma.OvertimeSelect;
 export type OvertimeRecord = Prisma.OvertimeGetPayload<{ select: typeof overtimeSelect }>;
+
+const historySelect = {
+  id: true, checkInAt: true, checkOutAt: true, maxOpenMinutes: true, checkOutSource: true, checkOutCorrectionRequestId: true,
+  authorization: { select: { attendance: { select: { workDate: true } } } },
+} satisfies Prisma.OvertimeSelect;
+export type OvertimeHistoryRecord = Prisma.OvertimeGetPayload<{ select: typeof historySelect }>;
+
+export async function listOwnOvertimeHistory(userId: string, page: number, pageSize: number) {
+  const db = getPrisma();
+  const where = { authorization: { attendance: { userId } } };
+  const [items, total] = await db.$transaction([
+    db.overtime.findMany({ where, select: historySelect, orderBy: [{ checkInAt: "desc" }, { id: "desc" }], skip: (page - 1) * pageSize, take: pageSize }),
+    db.overtime.count({ where }),
+  ], { isolationLevel: "RepeatableRead" });
+  return { items, total };
+}
+
+const ownDetailSelect = {
+  ...overtimeSelect,
+  authorization: { select: { id: true, grantedAt: true, revokedAt: true, note: true,
+    attendance: { select: { workDate: true } } } },
+} satisfies Prisma.OvertimeSelect;
+export type OwnOvertimeDetailRecord = Prisma.OvertimeGetPayload<{ select: typeof ownDetailSelect }>;
+export function findOwnOvertimeDetail(userId: string, id: string) {
+  return getPrisma().overtime.findFirst({ where: { id, authorization: { attendance: { userId } } }, select: ownDetailSelect });
+}
 
 /** SQL equivalent of the snapshot-based domain comparison; alias o is internal. */
 export function overtimeWindowSql(now: Date, incomplete = false) {
@@ -35,6 +62,7 @@ export function findHomeOvertimeAttendance(userId: string, attendanceId: string)
   return getPrisma().attendance.findFirst({
     where: { id: attendanceId, userId },
     select: {
+      workDate: true, checkInSource: true, checkOutSource: true, checkInCorrectionRequestId: true, checkOutCorrectionRequestId: true,
       checkOutAt: true,
       overtimeAuthorization: { select: {
         revokedAt: true,
@@ -48,6 +76,7 @@ export function findLatestOvertimeAttendance(userId: string, tx?: DatabaseTransa
     // Event chronology stays meaningful when the worker crosses calendar-date boundaries.
     where: { userId }, orderBy: [{ checkInAt: "desc" }, { id: "desc" }],
     select: { id: true, userId: true, workDate: true, checkOutAt: true,
+      checkInSource: true, checkOutSource: true, checkInCorrectionRequestId: true, checkOutCorrectionRequestId: true,
       overtimeAuthorization: { select: { id: true, revokedAt: true, note: true, overtime: { select: overtimeSelect } } } },
   });
 }
@@ -57,7 +86,7 @@ export function createOvertime(data: Prisma.OvertimeUncheckedCreateInput & { max
 }
 type CheckoutData = Pick<Prisma.OvertimeUncheckedUpdateInput, "checkOutAt" | "checkOutLatitude" | "checkOutLongitude" | "checkOutAccuracy" | "checkOutTimezone" | "checkOutDescription" | "checkOutPhotoPath" | "checkOutAddress">;
 export function closeOvertime(id: string, data: CheckoutData, tx: DatabaseTransaction) {
-  return tx.overtime.update({ where: { id, checkOutAt: null }, data, select: overtimeSelect });
+  return tx.overtime.update({ where: { id, checkOutAt: null }, data: { ...data, checkOutSource: "NORMAL", checkOutCorrectionRequestId: null }, select: overtimeSelect });
 }
 
 const adminOvertimeSelect = {
@@ -85,6 +114,7 @@ export function findAdminOvertimeById(id: string) {
 }
 
 const activityListSelect = {
+  checkOutSource: true,
   id: true, maxOpenMinutes: true, checkInAt: true, checkInTimezone: true, checkOutAt: true, checkOutTimezone: true,
   authorization: { select: { attendance: { select: { workDate: true, user: { select: { name: true, position: true } } } } } },
 } satisfies Prisma.OvertimeSelect;

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import type { AccountIdentity } from "@/components/user/account-menu";
+import { AnimatedBackground } from "@/components/shared/animated-background";
+import styles from "@/components/shared/animated-background.module.css";
 
 const PREFERENCE_KEY = "etime.admin.sidebar.collapsed";
 
@@ -18,9 +20,10 @@ export function AdminShell({ user, children }: { user: AccountIdentity; children
     setCollapsed(next);
     try { localStorage.setItem(PREFERENCE_KEY, String(next)); } catch { /* Keep the in-memory preference. */ }
   }
-  return <div className="min-h-dvh bg-muted/30">
+  return <div className={styles.shell}>
+    <AnimatedBackground />
     <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-background focus:p-4">Skip to content</a>
-    <div className={`grid min-h-dvh min-w-0 grid-cols-[minmax(0,1fr)] ${collapsed ? "md:grid-cols-[4rem_minmax(0,1fr)]" : "md:grid-cols-[16rem_minmax(0,1fr)]"}`}>
+    <div className={`${styles.content} grid min-h-dvh min-w-0 grid-cols-[minmax(0,1fr)] ${collapsed ? "md:grid-cols-[4rem_minmax(0,1fr)]" : "md:grid-cols-[16rem_minmax(0,1fr)]"}`}>
       <AdminSidebar collapsed={collapsed} />
       <div className="min-w-0">
         <AdminHeader user={user} collapsed={collapsed} onToggle={toggle} />

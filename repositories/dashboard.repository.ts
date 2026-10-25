@@ -5,6 +5,7 @@ import { getPrisma } from "@/lib/db/prisma";
 import { adminAttendanceOrder } from "@/repositories/attendance.repository";
 
 const summarySelect = {
+  checkInSource: true, checkOutSource: true, checkInCorrectionRequestId: true, checkOutCorrectionRequestId: true,
   id: true, checkInAt: true, checkInTimezone: true, checkOutAt: true, checkOutTimezone: true,
   user: { select: { name: true, position: true, isActive: true } },
 } satisfies Prisma.AttendanceSelect;

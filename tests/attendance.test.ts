@@ -34,6 +34,8 @@ test("work dates use event zones across both sides of UTC midnight", () => {
 
 test("attendance DTO explicitly selects safe fields and serializes dates", () => {
   const record = {
+    checkInSource: "NORMAL" as const, checkOutSource: null,
+    checkInCorrectionRequestId: null, checkOutCorrectionRequestId: null,
     id: "attendance", workDate: new Date("2026-09-19T00:00:00Z"), requiredWorkMinutes: 450,
     checkInAt: new Date("2026-09-18T17:30:00Z"), checkInLatitude: -6.2, checkInLongitude: 106.8,
     checkInAccuracy: 18, checkInAddress: null, checkInTimezone: "Asia/Jakarta", checkInDescription: null, checkOutAt: null,
@@ -44,11 +46,11 @@ test("attendance DTO explicitly selects safe fields and serializes dates", () =>
   assert.equal(dto.workDate, "2026-09-19");
   assert.equal(dto.checkInAt, "2026-09-18T17:30:00.000Z");
   assert.equal(dto.isOpen, true);
-  assert.deepEqual(Object.keys(dto).sort(), ["id", "workDate", "requiredWorkMinutes", "checkInAt", "checkInLatitude", "checkInLongitude", "checkInAccuracy", "checkInAddress", "checkInTimezone", "checkInDescription", "isOpen", "checkOutAt", "checkOutLatitude", "checkOutLongitude", "checkOutAccuracy", "checkOutAddress", "checkOutTimezone", "checkOutDescription", "dailyReport", "actualDurationMinutes", "differenceMinutes"].sort());
+  assert.deepEqual(Object.keys(dto).sort(), ["checkInSource", "checkOutSource", "checkInCorrectionRequestId", "checkOutCorrectionRequestId", "id", "workDate", "requiredWorkMinutes", "checkInAt", "checkInLatitude", "checkInLongitude", "checkInAccuracy", "checkInAddress", "checkInTimezone", "checkInDescription", "isOpen", "checkOutAt", "checkOutLatitude", "checkOutLongitude", "checkOutAccuracy", "checkOutAddress", "checkOutTimezone", "checkOutDescription", "dailyReport", "actualDurationMinutes", "differenceMinutes"].sort());
   assert.equal(dto.actualDurationMinutes, null);
   assert.equal(dto.differenceMinutes, null);
   for (const [minutes, difference] of [[450, 0], [420, -30], [513, 63]]) {
-    const completed = toAttendanceDto({ ...record, checkOutAt: new Date(record.checkInAt.getTime() + minutes * 60_000 + 59_999) });
+    const completed = toAttendanceDto({ ...record, checkOutSource: "NORMAL", checkOutAt: new Date(record.checkInAt.getTime() + minutes * 60_000 + 59_999) });
     assert.equal(completed.actualDurationMinutes, minutes);
     assert.equal(completed.differenceMinutes, difference);
   }
