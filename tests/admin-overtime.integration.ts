@@ -46,15 +46,20 @@ async function main() {
       assert.ok(!JSON.stringify(detail).includes("passwordHash")); assert.ok(!JSON.stringify(detail).includes("PhotoPath")); assert.ok(!JSON.stringify(detail).includes(root));
       assert.equal(detail.workDate, rows.find(row => row.id === item.id)!.workDate);
       if (detail.checkOut) assert.equal(detail.durationMinutes, 555);
+      assert.ok(detail.checkIn.photoUrl !== null, "Monitoring fixture must include a Check-In photo URL.");
       assert.match(detail.checkIn.photoUrl, /^\/api\/overtime\//);
     }
     const closed = all.items.find(row => row.employee.id === worker.id && row.workDate === "2026-09-01")!;
     assert.equal(closed.authorizationRevoked, true); assert.ok(closed.authorization.revokedAt);
+    assert.ok(closed.checkIn.timezone !== null, "Closed fixture must include a Check-In timezone.");
+    assert.ok(closed.checkOut && closed.checkOut.timezone !== null, "Closed fixture must include Checkout and its timezone.");
     assert.match(formatAdminEventTime(closed.checkIn.at, closed.checkIn.timezone), /WIB/);
-    assert.match(formatAdminEventTime(closed.checkOut!.at, closed.checkOut!.timezone), /WITA/);
+    assert.match(formatAdminEventTime(closed.checkOut.at, closed.checkOut.timezone), /WITA/);
     const foreign = all.items.find(row => row.workDate === "2026-09-02")!;
+    assert.ok(foreign.checkIn.timezone !== null, "Foreign fixture must include a Check-In timezone.");
+    assert.ok(foreign.checkOut && foreign.checkOut.timezone !== null, "Foreign fixture must include Checkout and its timezone.");
     assert.match(formatAdminEventTime(foreign.checkIn.at, foreign.checkIn.timezone), /WIT/);
-    assert.match(formatAdminEventTime(foreign.checkOut!.at, foreign.checkOut!.timezone), /America\/Los_Angeles/);
+    assert.match(formatAdminEventTime(foreign.checkOut.at, foreign.checkOut.timezone), /America\/Los_Angeles/);
     assert.ok((await readOvertimePhoto(admin.id, closed.id, "check-in", storage)).length);
     assert.ok((await readOvertimePhoto(admin.id, closed.id, "check-out", storage)).length);
     assert.ok((await readOvertimePhoto(worker.id, closed.id, "check-in", storage)).length);
