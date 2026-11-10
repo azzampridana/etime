@@ -16,10 +16,10 @@ export async function payrollApi(operation: () => Promise<unknown>, status = 200
   } catch (error) {
     if (error instanceof z.ZodError) return Response.json({ success: false, message: "Invalid payroll input. Check fields, amounts and item order." }, { status: 400, headers });
     if (error instanceof ApplicationError) {
-      const statuses: Record<string, number> = { UNAUTHENTICATED: 401, FORBIDDEN: 403,
+      const statuses: Record<string, number> = { UNAUTHENTICATED: 401, FORBIDDEN: 403, PAYROLL_CROSS_SITE: 403,
         PAYROLL_INVALID: 400, PAYROLL_NOT_FOUND: 404, PAYROLL_CONFLICT: 409 };
       const status = statuses[error.code];
-      if (status) return Response.json({ success: false, message: error.message }, { status, headers });
+      if (status) return Response.json({ success: false, code: error.code, message: error.message }, { status, headers });
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") {
       return Response.json({ success: false, message: "Concurrent change detected. Reload before trying again." }, { status: 409, headers });
@@ -34,8 +34,30 @@ export async function payrollJsonBody(request: Request): Promise<unknown> {
     throw new ApplicationError("PAYROLL_INVALID", "Send an application/json request body.");
   }
   const origin = request.headers.get("origin");
-  if ((origin && origin !== new URL(request.url).origin) || request.headers.get("sec-fetch-site") === "cross-site") {
-    throw new ApplicationError("FORBIDDEN", "Cross-site payroll changes are not permitted.");
+  // Explicit public origin supports reverse proxies without trusting forwarded headers.
+  const configuredOrigin = process.env.NEXTAUTH_URL;
+  let expectedOrigin: string;
+  try {
+    const canonical = new URL(configuredOrigin ?? request.url);
+    if (!["http:", "https:"].includes(canonical.protocol) || canonical.username || canonical.password ||
+      (configuredOrigin !== undefined && (canonical.pathname !== "/" || canonical.search || canonical.hash)) ||
+      (configuredOrigin !== undefined && process.env.NODE_ENV === "production" && canonical.protocol !== "https:")) {
+      throw new Error("Invalid canonical origin");
+    }
+    expectedOrigin = canonical.origin;
+  } catch {
+    // Fail closed for malformed configuration; do not disclose configuration values.
+    throw new ApplicationError("PAYROLL_CROSS_SITE", "Payroll origin configuration is invalid. Contact the administrator.");
+  }
+  let validOrigin = origin === null;
+  if (origin !== null) {
+    try {
+      const parsed = new URL(origin);
+      validOrigin = origin === parsed.origin && parsed.origin === expectedOrigin;
+    } catch { validOrigin = false; }
+  }
+  if (!validOrigin || request.headers.get("sec-fetch-site") === "cross-site") {
+    throw new ApplicationError("PAYROLL_CROSS_SITE", "Cross-site payroll changes are not permitted.");
   }
   try { return await request.json(); }
   catch { throw new ApplicationError("PAYROLL_INVALID", "Invalid JSON request body."); }

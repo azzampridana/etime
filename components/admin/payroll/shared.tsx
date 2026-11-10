@@ -46,8 +46,15 @@ export async function payrollRequest<T>(path: string, method = "GET", body?: unk
       body: body === undefined ? undefined : JSON.stringify(body) });
   } catch { throw new PayrollHttpError(0, "Koneksi terputus. Muat ulang untuk memastikan hasil sebelum mencoba lagi."); }
   const messages: Record<number, string> = { 400: "Periksa input Payroll.", 401: "Sesi berakhir. Silakan login kembali.",
-    403: "Akses ADMIN diperlukan.", 404: "Slip tidak ditemukan.", 409: "Data berubah atau slip periode ini sudah ada. Muat ulang sebelum melanjutkan." };
+    403: "Permintaan ditolak. Periksa izin akun atau hubungi administrator.", 404: "Slip tidak ditemukan.", 409: "Data berubah atau slip periode ini sudah ada. Muat ulang sebelum melanjutkan." };
   const data: unknown = await response.json().catch(() => null);
+  if (response.status === 403 && data && typeof data === "object") {
+    const code = "code" in data ? data.code : undefined;
+    const legacyCrossSite = "message" in data && data.message === "Cross-site payroll changes are not permitted.";
+    if (code === "PAYROLL_CROSS_SITE" || legacyCrossSite) throw new PayrollHttpError(403,
+      "Asal permintaan ditolak oleh perlindungan keamanan. Buka domain resmi ETime; jika tetap gagal, hubungi administrator untuk memeriksa konfigurasi origin.");
+    if (code === "FORBIDDEN") throw new PayrollHttpError(403, "Akses ADMIN aktif diperlukan.");
+  }
   if (!response.ok) throw new PayrollHttpError(response.status, messages[response.status] ?? "Hasil operasi belum dapat dipastikan. Muat ulang sebelum mencoba lagi.");
   if (!data || typeof data !== "object" || !("success" in data) || data.success !== true || !("data" in data)) {
     throw new PayrollHttpError(0, "Respons tidak dikenali. Muat ulang untuk memastikan hasil operasi.");
