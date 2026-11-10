@@ -54,6 +54,7 @@ export async function mutateEmployeeContact(rawId: unknown, rawContactId: unknow
       fields = (Object.keys(data) as (keyof typeof data)[]).filter(key => !before || data[key] !== before[key]);
       if (data.isPrimary) demoted = (await clearContactPrimary(employeeId, contactId, tx)).count;
       if (contactId && "version" in input) {
+        if (typeof input.version !== "number") throw conflict();
         if ((await updateContactRecord(employeeId, contactId, input.version, data, tx)).count !== 1) throw conflict();
       } else entityId = (await createContactRecord({ ...data, employeeId }, tx)).id;
     }
