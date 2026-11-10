@@ -12,6 +12,7 @@ import { formatDurationMinutes } from "@/lib/date-time/format-duration";
 import type { UserDto } from "@/types/user";
 import type { WorkScheduleOption } from "@/types/work-schedule";
 import type { ActionResult } from "@/types/action-result";
+import { EmployeeLinkPicker } from "@/components/admin/employees/link-picker";
 
 export function UserForm({ user, schedules, onSuccess, onCancel, onPendingChange }: {
   user?: UserDto; schedules: WorkScheduleOption[];
@@ -20,16 +21,21 @@ export function UserForm({ user, schedules, onSuccess, onCancel, onPendingChange
   const router = useRouter();
   const submitting = useRef(false);
   const [pending, setPending] = useState(false);
+  const [role, setRole] = useState<Role>(user?.role ?? Role.USER);
+  const [employeeMode, setEmployeeMode] = useState("new"), [employeeId, setEmployeeId] = useState("");
   const [result, setResult] = useState<ActionResult<UserDto>>({ success: false, message: "" });
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting.current) return;
+    if (!user && role === Role.USER && employeeMode === "existing" && !employeeId) {
+      setResult({ success: false, message: "Select an unlinked Employee before creating the account." }); return;
+    }
     const form = event.currentTarget;
     const data = new FormData(form);
     const input = { name: data.get("name"), position: data.get("position"), email: data.get("email"), role: data.get("role"), workScheduleId: data.get("workScheduleId"), password: data.get("password") };
     submitting.current = true; setPending(true); onPendingChange?.(true); setResult({ success: false, message: "" });
     try {
-      const response = user ? await updateUserAction({ ...input, id: user.id }) : await createUserAction({ ...input, isActive: data.get("isActive") === "on" });
+      const response = user ? await updateUserAction({ ...input, id: user.id }) : await createUserAction({ ...input, isActive: data.get("isActive") === "on", ...(role === Role.USER && employeeMode === "existing" ? { employeeId } : {}) });
       setResult({ ...response, message: response.success ? user ? "User updated." : "User created." : response.message });
       if (response.success) {
         const password = form.elements.namedItem("password");
@@ -37,7 +43,7 @@ export function UserForm({ user, schedules, onSuccess, onCancel, onPendingChange
         onSuccess?.(user ? "User updated." : "User created.");
         router.refresh();
       }
-    } catch { setResult({ success: false, message: "Unable to reach the server. Please try again." }); }
+    } catch { setResult({ success: false, message: "Outcome unknown. Reload and inspect Users before retrying." }); }
     finally { submitting.current = false; setPending(false); onPendingChange?.(false); }
   }
   function error(field: string) { return result.fieldErrors?.[field]?.join(" "); }
@@ -52,9 +58,10 @@ export function UserForm({ user, schedules, onSuccess, onCancel, onPendingChange
         {name === "password" && user && <p className="text-sm text-muted-foreground">Leave blank to keep the existing password.</p>}
       </div>)}
       <div className="space-y-2"><Label htmlFor="position">Company position (optional)</Label><Input id="position" name="position" maxLength={100} defaultValue={user?.position ?? ""} className="min-h-12" />{error("position") && <p role="alert">{error("position")}</p>}</div>
-      <div className="space-y-2"><Label htmlFor="role">System role</Label><select id="role" name="role" defaultValue={user?.role ?? Role.USER} className="min-h-12 w-full rounded-lg border bg-background p-3">
+      <div className="space-y-2"><Label htmlFor="role">System role</Label><select id="role" name="role" value={role} onChange={e => { setRole(e.target.value === Role.ADMIN ? Role.ADMIN : Role.USER); setEmployeeId(""); }} className="min-h-12 w-full rounded-lg border bg-background p-3">
         {Object.values(Role).map((role) => <option key={role}>{role}</option>)}
       </select>{error("role") && <p role="alert">{error("role")}</p>}</div>
+      {!user && role === Role.USER && <div className="space-y-3 rounded-lg border p-3"><Label htmlFor="employee-mode">Employee Profile</Label><select id="employee-mode" className="w-full rounded-md border bg-background px-3" value={employeeMode} onChange={e => { setEmployeeMode(e.target.value); setEmployeeId(""); }}><option value="new">Create New Employee</option><option value="existing">Link Existing Employee</option></select>{employeeMode === "existing" ? <EmployeeLinkPicker kind="employee" value={employeeId} onChange={setEmployeeId} disabled={pending} /> : <p className="text-xs text-muted-foreground">Creates a linked profile using the name and position above. Unknown personal and bank fields remain empty.</p>}</div>}
       <div className="space-y-2"><Label htmlFor="workScheduleId">WorkSchedule</Label>
         <select id="workScheduleId" name="workScheduleId" required defaultValue={user?.workSchedule.id ?? ""} className="min-h-12 w-full min-w-0 rounded-lg border bg-background p-3">
           <option value="" disabled>Select a schedule</option>

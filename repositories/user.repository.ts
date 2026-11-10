@@ -51,7 +51,8 @@ export async function findUserDeletionDependencies(id: string, tx: DatabaseTrans
   const grant = await tx.overtimeAuthorization.findFirst({ where: { grantedById: id }, select: { id: true } });
   const correction = await tx.attendanceCorrectionRequest.findFirst({ where: { OR: [{ userId: id }, { reviewedById: id }] }, select: { id: true } });
   const overtimeCorrection = await tx.overtimeCorrectionRequest.findFirst({ where: { OR: [{ userId: id }, { reviewedById: id }] }, select: { id: true } });
-  return { attendance, grant, correction, overtimeCorrection };
+  const payslip = await tx.payslip.findFirst({ where: { userId: id }, select: { id: true } });
+  return { attendance, grant, correction, overtimeCorrection, payslip };
 }
 
 export function deleteUserRecord(id: string, tx: DatabaseTransaction) {

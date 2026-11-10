@@ -8,7 +8,7 @@ export function UserHeader({ user }: { user: AccountIdentity }) {
         <div className="flex min-w-0 items-center gap-2.5">
           <Brand variant="compact" />
         </div>
-        <AccountMenu user={user} />
+        <AccountMenu user={user} showPayslips />
       </div>
     </header>
   );

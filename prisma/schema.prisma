@@ -12,6 +12,50 @@ enum Role {
   USER
 }
 
+// Employment lifecycle is independent of login access and application roles.
+enum EmploymentStatus {
+  ACTIVE
+  INACTIVE
+  RESIGNED
+  TERMINATED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  DIVORCED
+  WIDOWED
+}
+
+enum EmploymentType {
+  PERMANENT
+  CONTRACT
+  PROBATION
+  INTERN
+  FREELANCE
+}
+
+enum PayslipItemOrigin {
+  MASTER
+  CUSTOM
+}
+
+enum PayslipStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum PayslipItemCategory {
+  EARNING
+  DEDUCTION
+}
+
 enum OvertimeCorrectionStatus {
   PENDING
   APPROVED
@@ -75,11 +119,67 @@ model User {
   correctionReviews AttendanceCorrectionRequest[] @relation("CorrectionReviewer")
   overtimeCorrectionRequests OvertimeCorrectionRequest[] @relation("OvertimeCorrectionRequester")
   overtimeCorrectionReviews OvertimeCorrectionRequest[] @relation("OvertimeCorrectionReviewer")
+  payslips       Payslip[]
+  employee       Employee?
 
   @@index([workScheduleId])
   @@index([isActive, role])
   @@index([createdAt, id])
   @@map("user")
+}
+
+model Employee {
+  npwp                         String? @db.VarChar(32)
+  placeOfBirth                 String? @db.VarChar(100)
+  dateOfBirth                  DateTime? @db.Date
+  gender                       Gender?
+  maritalStatus                MaritalStatus?
+  bpjsKesehatanNumber           String? @db.VarChar(50)
+  bpjsKetenagakerjaanNumber     String? @db.VarChar(50)
+  employmentType               EmploymentType?
+  familyContacts               EmployeeFamilyContact[]
+  id                   String           @id @default(uuid()) @db.Char(36)
+  userId               String?          @unique @db.Char(36)
+  // Preserve personnel records when an otherwise deletable login account is removed.
+  user                 User?            @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  employeeNumber       String?          @unique @db.VarChar(50)
+  fullName             String           @db.VarChar(100)
+  jobTitle             String?          @db.VarChar(100)
+  // Calendar dates, not event timestamps; unknown dates remain null.
+  joinDate             DateTime?        @db.Date
+  employmentStatus     EmploymentStatus @default(ACTIVE)
+  employmentEndDate    DateTime?        @db.Date
+  phoneNumber          String?          @db.VarChar(50)
+  address              String?          @db.Text
+  // Sensitive strings: preserve leading zeros; exclude from general-purpose DTOs/logs.
+  nik                  String?          @db.VarChar(32)
+  bankName             String?          @db.VarChar(100)
+  bankAccountNumber    String?          @db.VarChar(100)
+  bankAccountHolder    String?          @db.VarChar(100)
+  createdAt            DateTime         @default(now()) @db.DateTime(3)
+  updatedAt            DateTime         @updatedAt @db.DateTime(3)
+  version              Int              @default(1)
+
+  @@index([employmentStatus, fullName, id])
+  @@map("employee")
+}
+
+model EmployeeFamilyContact {
+  id                 String   @id @default(uuid()) @db.Char(36)
+  employeeId         String   @db.Char(36)
+  employee           Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  name               String   @db.VarChar(100)
+  relationship       String   @db.VarChar(50)
+  phoneNumber        String   @db.VarChar(50)
+  address            String?  @db.Text
+  isEmergencyContact Boolean  @default(false)
+  isPrimary          Boolean  @default(false)
+  createdAt          DateTime @default(now()) @db.DateTime(3)
+  updatedAt          DateTime @updatedAt @db.DateTime(3)
+  version            Int      @default(1)
+
+  @@index([employeeId])
+  @@map("employee_family_contact")
 }
 
 model Attendance {
@@ -266,6 +366,75 @@ model DailyReport {
   updatedAt    DateTime   @updatedAt @db.DateTime(3)
 
   @@map("dailyreport")
+}
+
+// Payroll storage only; authorization, totals and immutability require services.
+model Payslip {
+  id                       String        @id @default(uuid()) @db.Char(36)
+  userId                   String        @db.Char(36)
+  user                     User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  year                     Int
+  month                    Int
+  status                   PayslipStatus @default(DRAFT)
+  employeeNameSnapshot     String        @db.VarChar(100)
+  employeePositionSnapshot String?       @db.VarChar(100)
+  companyNameSnapshot      String        @db.VarChar(200)
+  companyAddressSnapshot   String        @db.VarChar(500)
+  companyEmailSnapshot     String?       @db.VarChar(254)
+  companyPhoneSnapshot     String?       @db.VarChar(50)
+  bankName                 String?       @db.VarChar(100)
+  accountNumber            String?       @db.VarChar(100)
+  // Whole IDR. Future writers use Decimal arithmetic, never floating point.
+  totalEarnings            Decimal       @default(0) @db.Decimal(18, 0)
+  totalDeductions          Decimal       @default(0) @db.Decimal(18, 0)
+  takeHomePay              Decimal       @default(0) @db.Decimal(18, 0)
+  version                  Int           @default(1)
+  createdAt                DateTime      @default(now()) @db.DateTime(3)
+  updatedAt                DateTime      @updatedAt @db.DateTime(3)
+  publishedAt              DateTime?     @db.DateTime(3)
+  // Historical actor UUID metadata, not FKs. Services validate active ADMINs
+  // and write the existing AuditLog atomically with each mutation.
+  createdById              String        @db.Char(36)
+  updatedById              String        @db.Char(36)
+  publishedById            String?       @db.Char(36)
+  templateVersion          String        @default("v1") @db.VarChar(50)
+  items                    PayslipItem[]
+
+  @@unique([userId, year, month])
+  @@index([userId, status, year, month])
+  @@index([year, month, status])
+  @@map("payslip")
+}
+
+model PayslipItem {
+  id        String              @id @default(uuid()) @db.Char(36)
+  payslipId String              @db.Char(36)
+  // Cascade supports authorized DRAFT deletion, not permission to delete PUBLISHED.
+  payslip   Payslip             @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+  name      String              @db.VarChar(200)
+  category  PayslipItemCategory
+  origin    PayslipItemOrigin
+  amount    Decimal             @db.Decimal(18, 0)
+  sortOrder Int
+
+  @@unique([payslipId, category, sortOrder])
+  @@map("payslipitem")
+}
+
+// Active master rows are mandatory for future initialization, not live slip relations.
+model PayrollComponent {
+  id        String              @id @default(uuid()) @db.Char(36)
+  name      String              @db.VarChar(200)
+  category  PayslipItemCategory
+  sortOrder Int
+  isActive  Boolean             @default(true)
+  version   Int                 @default(1)
+  createdAt DateTime            @default(now()) @db.DateTime(3)
+  updatedAt DateTime            @updatedAt @db.DateTime(3)
+
+  @@unique([category, name], map: "payrollcomponent_category_name_key")
+  @@index([isActive, category, sortOrder, id], map: "payrollcomponent_active_order_idx")
+  @@map("payrollcomponent")
 }
 
 model AuditLog {

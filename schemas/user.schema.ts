@@ -23,6 +23,7 @@ export const createUserSchema = z.strictObject({
   password: passwordSchema,
   role: userFields.role.default(Role.USER),
   isActive: z.boolean().default(true),
+  employeeId: z.uuid().optional(),
 });
 
 export const updateUserSchema = z.strictObject({

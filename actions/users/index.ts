@@ -29,7 +29,18 @@ async function runUserAction<T>(operation: (context: UserMutationContext) => Pro
 }
 
 export async function createUserAction(input: unknown): Promise<ActionResult<UserDto>> {
-  return runUserAction((context) => createUser(createUserSchema.parse(input), context), true);
+  const result = await runUserAction((context) => createUser(createUserSchema.parse(input), context));
+  if (result.success) {
+    try {
+      revalidatePath("/admin/users");
+      revalidatePath("/admin/employees");
+      revalidatePath("/admin/attendance");
+      revalidatePath("/home");
+    } catch {
+      return { ...result, message: "User created. Reload to see the latest data." };
+    }
+  }
+  return result;
 }
 
 export async function updateUserAction(input: unknown): Promise<ActionResult<UserDto>> {

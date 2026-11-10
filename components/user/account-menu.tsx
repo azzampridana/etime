@@ -3,7 +3,8 @@
 import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { AlertDialog, DropdownMenu } from "radix-ui";
-import { LogOut } from "lucide-react";
+import { LogOut, Receipt } from "lucide-react";
+import Link from "next/link";
 import { logoutAction } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 
@@ -23,7 +24,7 @@ function SignOutActions() {
   );
 }
 
-export function AccountMenu({ user }: { user: AccountIdentity }) {
+export function AccountMenu({ user, showPayslips = false }: { user: AccountIdentity; showPayslips?: boolean }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const confirmationRequested = useRef(false);
@@ -59,6 +60,7 @@ export function AccountMenu({ user }: { user: AccountIdentity }) {
               <p className="text-xs font-normal text-muted-foreground">{user.email}</p>
             </DropdownMenu.Label>
             <DropdownMenu.Separator className="my-1 h-px bg-border" />
+            {showPayslips && <DropdownMenu.Item asChild className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"><Link prefetch={false} href="/payslips"><Receipt aria-hidden="true" className="size-4" />My Payslips</Link></DropdownMenu.Item>}
             <DropdownMenu.Item
               className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
               onSelect={() => { confirmationRequested.current = true; }}

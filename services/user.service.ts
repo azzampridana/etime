@@ -1,7 +1,9 @@
 import "server-only";
 
 import { hashPassword } from "@/lib/auth/password";
-import { isUniqueConstraintError } from "@/lib/db/persistence-error";
+import { isUniqueConstraintError, isUniqueConstraintOn } from "@/lib/db/persistence-error";
+import { Prisma } from "@/generated/prisma/client";
+import { createEmployeeRecord, lockEmployeeRecord, linkUnassignedEmployee } from "@/repositories/employee.repository";
 import { inTransaction, type DatabaseTransaction } from "@/lib/db/transaction";
 import { ApplicationError } from "@/lib/errors/application-error";
 import { toUserDto } from "@/mappers/user.mapper";
@@ -46,19 +48,47 @@ async function withEmailConflictHandling<T>(operation: () => Promise<T>): Promis
 export async function createUser(raw: CreateUserInput, context: UserMutationContext) {
   const input = createUserSchema.parse(raw);
   const passwordHash = await hashPassword(input.password);
-  return withEmailConflictHandling(() => inTransaction(async (tx) => {
+  if (input.role === "ADMIN" && input.employeeId) throw new ApplicationError("EMPLOYEE_INVALID", "ADMIN accounts cannot be linked through Create User.");
+  if (input.role === "USER" && !context.actorId) throw new ApplicationError("FORBIDDEN", "An administrator is required to create an employee account.");
+  try { return await inTransaction(async (tx) => {
+    if (context.actorId) {
+      await lockAttendanceUser(context.actorId, tx);
+      const actor = await requireUser(context.actorId, tx);
+      assertAdmin(actor.isActive ? actor : null);
+    }
     await requireUsableSchedule(input.workScheduleId, tx);
     await requireUniqueEmail(input.email, tx);
     const user = await createUserRecord({
       name: input.name, position: input.position ?? null, email: input.email, role: input.role,
       isActive: input.isActive, workScheduleId: input.workScheduleId, passwordHash,
     }, tx);
+    if (user.role === "USER") {
+      let employeeId: string;
+      if (input.employeeId) {
+        await lockEmployeeRecord(input.employeeId, tx);
+        const linked = await linkUnassignedEmployee(input.employeeId, user.id, tx);
+        if (linked.count !== 1) throw new ApplicationError("EMPLOYEE_CONFLICT", "Employee is already linked or unavailable. Choose another Employee.");
+        employeeId = input.employeeId;
+      } else {
+        const employee = await createEmployeeRecord({ fullName: user.name, jobTitle: user.position,
+          user: { connect: { id: user.id } } }, tx);
+        employeeId = employee.id;
+      }
+      await createAuditRecord({ actorId: context.actorId, action: input.employeeId ? "EMPLOYEE_USER_LINKED" : "EMPLOYEE_CREATED",
+        entityType: "Employee", entityId: employeeId, metadata: { linkedUserId: user.id } }, tx);
+    }
     await createAuditRecord({
       actorId: context.actorId, action: "USER_CREATED", entityType: "User", entityId: user.id,
       metadata: { role: user.role, position: user.position, isActive: user.isActive, workScheduleId: user.workScheduleId },
     }, tx);
     return toUserDto(user);
-  }));
+  }); } catch (error) {
+    if (isUniqueConstraintOn(error, "user_email_key", ["email"])) throw new ApplicationError("EMAIL_EXISTS", "Email is already in use.");
+    if (isUniqueConstraintError(error) || (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034")) {
+      throw new ApplicationError("EMPLOYEE_CONFLICT", "Concurrent account or Employee change. Reload and inspect existing records before retrying.");
+    }
+    throw error;
+  }
 }
 
 export async function updateUser(raw: UpdateUserInput, context: UserMutationContext) {
@@ -120,7 +150,7 @@ export async function deleteUser(rawId: string, context: UserMutationContext) {
     const dependencies = await findUserDeletionDependencies(id, tx);
     // Attendance protects its DailyReport, authorization and overtime descendants too.
     // Issued grants retain a required, restricted grantedById reference, even if unused.
-    if (dependencies.attendance || dependencies.grant || dependencies.correction || dependencies.overtimeCorrection) {
+    if (dependencies.attendance || dependencies.grant || dependencies.correction || dependencies.overtimeCorrection || dependencies.payslip) {
       throw new ApplicationError("USER_HAS_HISTORY", "This user cannot be deleted because operational history already exists. Deactivate the account instead.");
     }
     // Administrative audits are not blockers: existing actor FKs use SetNull on deletion.

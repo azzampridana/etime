@@ -7,11 +7,17 @@ export const userNavigation = [
 export const adminNavigation = [
   { href: "/admin", label: "Dashboard", icon: "dashboard" },
   { href: "/admin/users", label: "Users", icon: "users" },
-  { href: "/admin/attendance", label: "Attendance", icon: "attendance" },
-  { href: "/admin/attendance-requests", label: "Attendance Requests", icon: "attendance" },
-  { href: "/admin/overtime", label: "Overtime", icon: "overtime" },
-  { href: "/admin/overtime-requests", label: "Overtime Requests", icon: "overtime" },
+  { href: "/admin/employees", label: "Employees", icon: "users" },
+  { label: "Attendance", icon: "attendance", children: [
+    { href: "/admin/attendance", label: "Attendance", icon: "attendance" },
+    { href: "/admin/attendance-requests", label: "Attendance Requests", icon: "attendanceRequests" },
+  ] },
+  { label: "Overtime", icon: "overtime", children: [
+    { href: "/admin/overtime", label: "Overtime", icon: "overtime" },
+    { href: "/admin/overtime-requests", label: "Overtime Requests", icon: "overtimeRequests" },
+  ] },
   { href: "/admin/reports", label: "Reports", icon: "reports" },
+  { href: "/admin/payroll", label: "Payroll", icon: "payroll" },
 ] as const;
 
 export function isNavigationActive(pathname: string, href: string): boolean {
