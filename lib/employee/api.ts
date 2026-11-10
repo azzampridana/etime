@@ -4,6 +4,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { requireAdmin } from "@/lib/authorization/require-user";
 import { ApplicationError } from "@/lib/errors/application-error";
 import { isUniqueConstraintOn } from "@/lib/db/persistence-error";
+import { checkMutationOrigin } from "@/lib/security/mutation-origin";
 
 const headers = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
 export async function employeeApi(operation: () => Promise<unknown>, status = 200) {
@@ -14,7 +15,7 @@ export async function employeeApi(operation: () => Promise<unknown>, status = 20
     let code = 500, message = "Unable to complete Employee operation. Reload before retrying.";
     if (error instanceof z.ZodError) { code = 400; message = "Check required fields, maximum lengths and date order."; }
     if (error instanceof ApplicationError) {
-      const statuses: Record<string, number> = { UNAUTHENTICATED: 401, FORBIDDEN: 403, EMPLOYEE_INVALID: 400, EMPLOYEE_NOT_FOUND: 404, EMPLOYEE_CONFLICT: 409 };
+      const statuses: Record<string, number> = { UNAUTHENTICATED: 401, FORBIDDEN: 403, EMPLOYEE_CROSS_SITE: 403, EMPLOYEE_INVALID: 400, EMPLOYEE_NOT_FOUND: 404, EMPLOYEE_CONFLICT: 409 };
       if (statuses[error.code]) { code = statuses[error.code]; message = error.message; }
     }
     if (isUniqueConstraintOn(error, "employee_employeeNumber_key", ["employeeNumber"])) {
@@ -24,13 +25,16 @@ export async function employeeApi(operation: () => Promise<unknown>, status = 20
     } else if (error instanceof Prisma.PrismaClientKnownRequestError && ["P2002", "P2034"].includes(error.code)) {
       code = 409; message = "Conflicting Employee change. Reload before saving.";
     }
-    return Response.json({ success: false, message }, { status: code, headers });
+    const errorCode = error instanceof ApplicationError && ["UNAUTHENTICATED", "FORBIDDEN", "EMPLOYEE_CROSS_SITE"].includes(error.code) ? error.code : undefined;
+    return Response.json({ success: false, message, code: errorCode }, { status: code, headers });
   }
 }
 export async function employeeBody(request: Request): Promise<unknown> {
-  const origin = request.headers.get("origin");
-  if ((origin && origin !== new URL(request.url).origin) || request.headers.get("sec-fetch-site") === "cross-site") {
-    throw new ApplicationError("FORBIDDEN", "Cross-site changes are not permitted.");
+  const originFailure = checkMutationOrigin(request);
+  if (originFailure) {
+    throw new ApplicationError("EMPLOYEE_CROSS_SITE", originFailure === "configuration"
+      ? "Employee origin configuration is invalid. Contact the administrator."
+      : "Cross-site changes are not permitted.");
   }
   if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") {
     throw new ApplicationError("EMPLOYEE_INVALID", "Send an application/json body.");

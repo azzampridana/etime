@@ -1,4 +1,5 @@
 import "server-only";
+import { checkMutationOrigin } from "@/lib/security/mutation-origin";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { requireAdmin } from "@/lib/authorization/require-user";
@@ -33,31 +34,11 @@ export async function payrollJsonBody(request: Request): Promise<unknown> {
   if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") {
     throw new ApplicationError("PAYROLL_INVALID", "Send an application/json request body.");
   }
-  const origin = request.headers.get("origin");
-  // Explicit public origin supports reverse proxies without trusting forwarded headers.
-  const configuredOrigin = process.env.NEXTAUTH_URL;
-  let expectedOrigin: string;
-  try {
-    const canonical = new URL(configuredOrigin ?? request.url);
-    if (!["http:", "https:"].includes(canonical.protocol) || canonical.username || canonical.password ||
-      (configuredOrigin !== undefined && (canonical.pathname !== "/" || canonical.search || canonical.hash)) ||
-      (configuredOrigin !== undefined && process.env.NODE_ENV === "production" && canonical.protocol !== "https:")) {
-      throw new Error("Invalid canonical origin");
-    }
-    expectedOrigin = canonical.origin;
-  } catch {
-    // Fail closed for malformed configuration; do not disclose configuration values.
-    throw new ApplicationError("PAYROLL_CROSS_SITE", "Payroll origin configuration is invalid. Contact the administrator.");
-  }
-  let validOrigin = origin === null;
-  if (origin !== null) {
-    try {
-      const parsed = new URL(origin);
-      validOrigin = origin === parsed.origin && parsed.origin === expectedOrigin;
-    } catch { validOrigin = false; }
-  }
-  if (!validOrigin || request.headers.get("sec-fetch-site") === "cross-site") {
-    throw new ApplicationError("PAYROLL_CROSS_SITE", "Cross-site payroll changes are not permitted.");
+  const originFailure = checkMutationOrigin(request);
+  if (originFailure) {
+    throw new ApplicationError("PAYROLL_CROSS_SITE", originFailure === "configuration"
+      ? "Payroll origin configuration is invalid. Contact the administrator."
+      : "Cross-site payroll changes are not permitted.");
   }
   try { return await request.json(); }
   catch { throw new ApplicationError("PAYROLL_INVALID", "Invalid JSON request body."); }

@@ -59,8 +59,8 @@ export function FamilyContacts({ employeeId, employeeVersion, profileDirty, onCo
       const status = failure instanceof EmployeeHttpError ? failure.status : undefined;
       if (status === 404) {
         setError("Employee or contact resource not found. Reload Employee and contacts before retrying.");
-      } else if (status === 401 || status === 403) {
-        setError(status === 401 ? "Please sign in again before modifying contacts." : "You do not have permission to modify these contacts.");
+      } else if (failure instanceof EmployeeHttpError && (status === 401 || status === 403)) {
+        setError(failure.message);
       } else if (failure instanceof EmployeeHttpError && (status === 400 || status === 422 || status === 409)) {
         setError(failure.message);
       } else {
