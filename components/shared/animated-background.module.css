@@ -3,23 +3,16 @@
   isolation: isolate;
   min-height: 100dvh;
 
-  --diagonal-base: #FAFCFF;
-  --diagonal-sage: #F1F7FD;
-  --diagonal-blue: #E5F0FB;
-  --diagonal-mist: #F5F9FE;
-  --diagonal-pale: #D8E9F8;
+  --diagonal-base: var(--background);
+  --diagonal-sage: var(--secondary);
+  --diagonal-blue: var(--muted);
+  --diagonal-mist: var(--background);
+  --diagonal-pale: var(--accent);
 
   background: var(--diagonal-base);
 }
 
-/* Dark mode */
-:global(.dark) .shell {
-  --diagonal-base: #10171e;
-  --diagonal-sage: #1c3431;
-  --diagonal-blue: #25374a;
-  --diagonal-mist: #1c2d3e;
-  --diagonal-pale: #203a35;
-}
+/* Theme colors inherit from the global semantic tokens. */
 
 /* Decorative background */
 .background {
@@ -46,8 +39,8 @@
     var(--diagonal-blue) 50%
   );
 
-  opacity: 0.65;
-  animation: slide 8s ease-in-out infinite alternate;
+  opacity: 0.25;
+  animation: slide 16s ease-in-out infinite alternate;
   will-change: transform;
 }
 
@@ -58,8 +51,8 @@
     var(--diagonal-pale) 50%
   );
 
-  opacity: 0.35;
-  animation-duration: 12s;
+  opacity: 0.15;
+  animation-duration: 21s;
   animation-direction: alternate-reverse;
 }
 
@@ -70,8 +63,8 @@
     var(--diagonal-sage) 50%
   );
 
-  opacity: 0.2;
-  animation-duration: 16s;
+  opacity: 0.10;
+  animation-duration: 27s;
 }
 
 @keyframes slide {
@@ -84,27 +77,12 @@
   }
 }
 
-/* Mobile: more visible sliding diagonals */
+/* Preserve mobile coverage with the same restrained palette. */
 @media (max-width: 767px) {
-  .shell {
-    --diagonal-sage: #F1F7FD;
-    --diagonal-blue: #E5F0FB;
-    --diagonal-mist: #F5F9FE;
-    --diagonal-pale: #D8E9F8;
-  }
-
-  /* Keep mobile dark mode dark */
-  :global(.dark) .shell {
-    --diagonal-sage: #1b3935;
-    --diagonal-blue: #293e55;
-    --diagonal-mist: #213347;
-    --diagonal-pale: #234039;
-  }
-
-  .layer {
+.layer {
     inset: -20% -110%;
 
-    opacity: 0.85;
+    opacity: 0.25;
 
     background: linear-gradient(
       135deg,
@@ -113,17 +91,17 @@
     );
 
     animation-name: mobile-slide;
-    animation-duration: 7s;
+    animation-duration: 16s;
   }
 
   .layer:nth-child(2) {
-    opacity: 0.45;
-    animation-duration: 10s;
+    opacity: 0.15;
+    animation-duration: 21s;
   }
 
   .layer:nth-child(3) {
-    opacity: 0.25;
-    animation-duration: 14s;
+    opacity: 0.10;
+    animation-duration: 27s;
   }
 }
 

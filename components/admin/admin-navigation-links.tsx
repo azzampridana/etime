@@ -14,8 +14,8 @@ type Item = (typeof adminNavigation)[number];
 type Group = Extract<Item, { children: readonly unknown[] }>;
 type NavLink = Exclude<Item, Group> | Group["children"][number];
 const base = "flex min-h-11 w-full min-w-0 items-center gap-2.5 rounded-lg px-3 text-left text-sm transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transition-none";
-const activeStyle = "bg-accent font-semibold text-accent-foreground";
-const idleStyle = "text-muted-foreground hover:bg-muted hover:text-foreground";
+const activeStyle = "bg-sidebar-accent font-semibold text-sidebar-accent-foreground ring-1 ring-inset ring-sidebar-primary/10";
+const idleStyle = "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground";
 
 function RailLabel({ label, children, collapsed }: { label: string; children: ReactElement; collapsed: boolean }) {
   if (!collapsed) return children;
@@ -30,7 +30,7 @@ function NavigationItem({ item, pathname, collapsed, child = false, onNavigate }
   return <RailLabel label={item.label} collapsed={collapsed}><Link href={item.href} prefetch={false} onClick={onNavigate}
     aria-label={collapsed ? item.label : undefined} aria-current={active ? "page" : undefined}
     className={cn(base, active ? activeStyle : idleStyle, collapsed ? "justify-center px-0" : child ? "pl-4 text-[13px]" : "font-medium")}>
-    <Icon aria-hidden="true" className={cn("shrink-0", child ? "size-4" : "size-[18px]")} />
+    <Icon aria-hidden="true" className={cn("shrink-0", !active && "text-muted-foreground", child ? "size-4" : "size-[18px]")} />
     {!collapsed && <span className="min-w-0 flex-1 break-words py-2 leading-5">{item.label}</span>}
     {active && !collapsed && <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-current opacity-70" />}
   </Link></RailLabel>;
