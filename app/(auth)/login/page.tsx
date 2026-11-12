@@ -32,7 +32,7 @@ export default async function LoginPage() {
           </CardHeader>
           <CardContent className="px-6 sm:px-8"><LoginForm /></CardContent>
         </Card>
-        <p className="text-center text-xs text-muted-foreground">Enneaphos Group</p>
+        <p className="text-center text-xs text-muted-foreground">Ennea Phos Group</p>
       </div>
     </main>
   );

@@ -19,7 +19,7 @@ import { createPayrollDraftSchema, deletePayrollDraftSchema, listPayrollSchema,
   payslipIdSchema, updatePayrollDraftSchema, initializePayrollSchema, publishPayrollSchema, fillPayrollBankSchema, type PayrollItemsInput } from "@/schemas/payroll.schema";
 
 const companySnapshot = {
-  companyNameSnapshot: "Enneaphos Group",
+  companyNameSnapshot: "Ennea Phos Group",
   companyAddressSnapshot: "Grand Centro Bintaro, Jl. Kodam Bintaro blok B no 18, RT.5/RW.3 Pesanggrahan, Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12320",
   companyEmailSnapshot: "", companyPhoneSnapshot: "",
 };

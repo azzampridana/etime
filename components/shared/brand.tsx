@@ -11,7 +11,7 @@ export function Brand({ variant = "horizontal" }: { variant?: "horizontal" | "co
       </div>
       {variant === "compact" && <div>
         <p className="text-xl font-semibold tracking-tight">ETime</p>
-        <p className="text-xs text-muted-foreground">Enneaphos Group</p>
+        <p className="text-xs text-muted-foreground">Ennea Phos Group</p>
       </div>}
     </div>
   );
